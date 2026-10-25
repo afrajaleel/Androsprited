@@ -54,8 +54,17 @@ public:
 } // namespace
 
 // Aseprite entry point. (Called from she library.)
+#ifdef ANDROID
+// main/android_glue.cpp
+void android_init();
+#endif
+
 int app_main(int argc, char* argv[])
 {
+#ifdef ANDROID
+  android_init();
+#endif
+
   // Initialize the locale. Aseprite isn't ready to handle numeric
   // fields with other locales (e.g. we expect strings like "10.32" be
   // used in std::strtod(), not something like "10,32").

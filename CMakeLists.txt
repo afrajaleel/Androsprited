@@ -72,6 +72,27 @@ else()
 endif()
 
 ######################################################################
+# Android
+#
+# The Android app (see android/README.md) builds Besprited as libmain.so,
+# which SDL's Java activity loads and runs. android/build-native.sh sets up
+# this configuration. The code base checks the ANDROID macro (not the
+# compiler's __ANDROID__) so the Android paths can be compiled on a desktop
+# too by passing -DANDROID=ON.
+
+if(ANDROID)
+  if(NOT USE_SDL3_BACKEND)
+    message(FATAL_ERROR "The Android build needs the SDL3 backend")
+  endif()
+  add_definitions(-DANDROID)
+endif()
+
+# When cross-compiling (e.g. for Android) the gen code generator can't run
+# on the build machine, so a gen built for the build machine is passed in.
+set(GEN_EXECUTABLE "" CACHE FILEPATH
+    "Pre-built gen code generator to use instead of building it (for cross-compiling)")
+
+######################################################################
 # Profile build type
 
 list(APPEND CMAKE_BUILD_TYPES Profile)
@@ -200,8 +221,18 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     )
     set(LibArchive_INCLUDE_DIR "${LIBARCHIVE_PREFIX}/include")
 endif()
-find_package(LibArchive REQUIRED)
-include_directories(${LibArchive_INCLUDE_DIR})
+if(ANDROID)
+  # Only used to unpack .aseprite-extension files, a format that is
+  # currently disabled (see app/file/extension_format.cpp).
+  find_package(LibArchive QUIET)
+else()
+  find_package(LibArchive REQUIRED)
+endif()
+if(LibArchive_FOUND)
+  include_directories(${LibArchive_INCLUDE_DIR})
+else()
+  set(LibArchive_LIBRARY "" CACHE FILEPATH "" FORCE)
+endif()
 
 # libpng
 find_package(PNG REQUIRED)
@@ -244,8 +275,18 @@ include_directories(${GIF_INCLUDE_DIRS})
 find_package(JPEG REQUIRED)
 include_directories(${JPEG_INCLUDE_DIRS})
 
-find_package(CURL REQUIRED)
-include_directories(${CURL_INCLUDE_DIRS})
+if(ANDROID)
+  # Without libcurl, src/net falls back to http_request_null.cpp.
+  find_package(CURL QUIET)
+else()
+  find_package(CURL REQUIRED)
+endif()
+if(CURL_FOUND)
+  include_directories(${CURL_INCLUDE_DIRS})
+else()
+  set(CURL_LIBRARY "" CACHE FILEPATH "" FORCE)
+  set(CURL_LIBRARIES "")
+endif()
 endif()
 # simpleini
 include_directories(${SIMPLEINI_DIR})
@@ -266,7 +307,7 @@ if(USE_SDL2_BACKEND)
   include_directories(${SDL2_INCLUDE_DIRS})
   find_package(SDL2_IMAGE REQUIRED)
   include_directories(${SDL2_IMAGE_INCLUDE_DIRS})
-elseif(USE_SDL3_BACKEND)
+elseif(USE_SDL3_BACKEND AND NOT GEN_ONLY)
   add_definitions(-DUSE_SDL3_BACKEND)
 
   # SDL3 ships proper CMake config packages (imported SDL3::SDL3 and
@@ -280,7 +321,7 @@ endif()
 
 # -- Unix --
 
-if(UNIX AND NOT APPLE AND NOT BEOS AND NOT GEN_ONLY)
+if(UNIX AND NOT APPLE AND NOT BEOS AND NOT ANDROID AND NOT GEN_ONLY)
   # Pthreads
   find_package(Threads REQUIRED)
   list(APPEND PLATFORM_LIBS m ${CMAKE_THREAD_LIBS_INIT})

@@ -61,6 +61,15 @@ public:
   SDL_Renderer* renderer() { return m_renderer; }
   SDL_Window* window() { return m_window; }
 
+  // Converts a position in window coordinates (as reported by SDL events)
+  // into a position in the display's (scaled) surface.
+  [[nodiscard]] gfx::Point windowToDisplay(float x, float y) const;
+
+  // Re-reads the window size and, on Android, the safe area (the part of
+  // the screen not covered by a camera cutout or system bars). Called when
+  // the window is resized or the safe area changes.
+  void updateWindowArea();
+
   static inline bool gpu{};
 
 private:
@@ -76,6 +85,10 @@ private:
   int m_restoredHeight;
   bool m_isFullscreen = false;
   bool m_dirty = true;
+  // Top-left of the drawable area in window coordinates; non-zero only on
+  // Android when part of the screen is covered (see updateWindowArea()).
+  int m_offsetX = 0;
+  int m_offsetY = 0;
 };
 
 extern SDL3Display* unique_display;

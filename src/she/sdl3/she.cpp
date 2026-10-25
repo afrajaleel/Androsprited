@@ -29,11 +29,16 @@
 #include "base/string.h"
 #include "she/sdl3/sdl3_display.h"
 #include "she/sdl3/sdl3_surface.h"
+#include "she/sdl3/sdl3_touch.h"
 #include "she/common/system.h"
 #include "she/logger.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
+#ifdef __ANDROID__
+// Renames main() below to SDL_main(), which SDL's Java activity calls.
+#include <SDL3/SDL_main.h>
+#endif
 
 #include <cstdlib>
 #include <iostream>
@@ -300,8 +305,38 @@ public:
       getEventInternal(event, false);
   }
 
+#ifdef ANDROID
+  // Touchscreen fingers (see sdl3_touch.h)
+  SDL3TouchGestures m_touch;
+  std::deque<Event> m_touchEvents;
+
+  bool popTouchEvent(Event& event)
+  {
+    if (m_touchEvents.empty())
+      return false;
+    event = m_touchEvents.front();
+    m_touchEvents.pop_front();
+    if (event.type() != Event::KeyDown && event.type() != Event::KeyUp)
+      event.setModifiers(getSheModifiers());
+    if (!display_has_mouse && event.type() == Event::MouseMove)
+    {
+      display_has_mouse = true;
+      Event ev;
+      ev.setType(Event::MouseEnter);
+      m_events.push(ev);
+    }
+    return true;
+  }
+#endif
+
   void getEventInternal(Event& event, bool)
   {
+#ifdef ANDROID
+    m_touch.update(unique_display, m_touchEvents);
+    if (popTouchEvent(event))
+      return;
+#endif
+
     SDL_Event sdlEvent;
     while (SDL_PollEvent(&sdlEvent))
     {
@@ -341,14 +376,23 @@ public:
         std::cout << "Restored" << "\n";
         continue;
 
+#ifdef ANDROID
+      // The usable part of the screen changes when the phone rotates or the
+      // system bars appear/disappear.
+      case SDL_EVENT_WINDOW_SAFE_AREA_CHANGED:
+#endif
       case SDL_EVENT_WINDOW_RESIZED:
       {
         auto it = sdl::windowIdToDisplay.find(static_cast<int>(sdlEvent.window.windowID));
         if (it == sdl::windowIdToDisplay.end())
           continue;
         auto display = it->second;
+#ifdef ANDROID
+        display->updateWindowArea();
+#else
         display->setWidth(sdlEvent.window.data1);
         display->setHeight(sdlEvent.window.data2);
+#endif
         display->recreateSurface();
         event.setType(Event::ResizeDisplay);
         event.setDisplay(display);
@@ -385,7 +429,9 @@ public:
       case SDL_EVENT_WINDOW_ICCPROF_CHANGED:
       case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
       case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+#ifndef ANDROID
       case SDL_EVENT_WINDOW_SAFE_AREA_CHANGED:
+#endif
       case SDL_EVENT_WINDOW_OCCLUDED:
       case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
       case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
@@ -420,8 +466,7 @@ public:
 
         event.setType(Event::MouseMove);
         event.setModifiers(getSheModifiers());
-        event.setPosition({static_cast<int>(sdlEvent.motion.x / unique_display->scale()),
-                           static_cast<int>(sdlEvent.motion.y / unique_display->scale())});
+        event.setPosition(unique_display->windowToDisplay(sdlEvent.motion.x, sdlEvent.motion.y));
 
         {
           const int hasFingerEvent =
@@ -443,9 +488,23 @@ public:
         event.setPointerType(pointerType);
         return;
 
+#ifdef ANDROID
+      case SDL_EVENT_FINGER_DOWN:
+      case SDL_EVENT_FINGER_MOTION:
+      case SDL_EVENT_FINGER_UP:
+      case SDL_EVENT_FINGER_CANCELED:
+        // Touch emulated from a mouse or pen is already handled as such.
+        if (sdlEvent.tfinger.touchID == SDL_MOUSE_TOUCHID || sdlEvent.tfinger.touchID == SDL_PEN_TOUCHID)
+          continue;
+        m_touch.processEvent(sdlEvent, unique_display, m_touchEvents);
+        if (popTouchEvent(event))
+          return;
+        continue;
+#else
       case SDL_EVENT_FINGER_MOTION:
         penPressure = std::max<>(sdlEvent.tfinger.pressure, 0.0001f);
         continue;
+#endif
 
       case SDL_EVENT_PEN_AXIS:
         if (sdlEvent.paxis.axis == SDL_PEN_AXIS_PRESSURE)
@@ -486,8 +545,7 @@ public:
         {
           float x, y;
           SDL_GetMouseState(&x, &y);
-          event.setPosition(
-              {static_cast<int>(x / unique_display->scale()), static_cast<int>(y / unique_display->scale())});
+          event.setPosition(unique_display->windowToDisplay(x, y));
         }
         return;
 
@@ -496,8 +554,7 @@ public:
       {
         auto type = sdlEvent.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? Event::MouseDown : Event::MouseUp;
         event.setType(type);
-        event.setPosition({static_cast<int>(sdlEvent.button.x / unique_display->scale()),
-                           static_cast<int>(sdlEvent.button.y / unique_display->scale())});
+        event.setPosition(unique_display->windowToDisplay(sdlEvent.button.x, sdlEvent.button.y));
         event.setButton(mouseButtonMapping[sdlEvent.button.button]);
         event.setModifiers(getSheModifiers());
 
@@ -541,13 +598,19 @@ public:
       {
         Event event;
         const bool isPressed = sdlEvent.type == SDL_EVENT_KEY_DOWN;
-        auto modifierIt = modifiers.find(sdlEvent.key.key);
+        SDL_Keycode keycode = sdlEvent.key.key;
+#ifdef ANDROID
+        // Android's back button/gesture closes menus and dialogs, like Esc.
+        if (keycode == SDLK_AC_BACK)
+          keycode = SDLK_ESCAPE;
+#endif
+        auto modifierIt = modifiers.find(keycode);
         if (modifierIt != modifiers.end())
         {
           modifierIt->second.isPressed = isPressed;
         }
 
-        auto it = keyCodeMapping.find(sdlEvent.key.key);
+        auto it = keyCodeMapping.find(keycode);
 
         if (it == keyCodeMapping.end())
         {
@@ -577,10 +640,15 @@ public:
             SDL_StopTextInput(unique_display->window());
           break;
         }
+#ifndef ANDROID
+        // (Not on Android: there this would pop up the on-screen keyboard
+        // on any key, e.g. the back button. Text fields start text input
+        // themselves through set_input_rect().)
         else if (unique_display && !SDL_TextInputActive(unique_display->window()))
         {
           SDL_StartTextInput(unique_display->window());
         }
+#endif
         continue;
       }
 
@@ -965,6 +1033,19 @@ int main(const int argc, char* argv[])
   // existing SDL_EVENT_FINGER_MOTION-based pressure tracking above with a
   // second, less precise pressure value - see #263 (R5).
   SDL_SetHint(SDL_HINT_PEN_TOUCH_EVENTS, "0");
+
+#ifdef ANDROID
+  // Fingers are turned into mouse events and pan/zoom gestures by
+  // SDL3TouchGestures instead of SDL's simpler touch-to-mouse emulation,
+  // and mouse input shouldn't be duplicated as touch input either.
+  SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+  SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
+  // Deliver the back button/gesture as a key (handled as Esc) instead of
+  // letting it close the app.
+  SDL_SetHint(SDL_HINT_ANDROID_TRAP_BACK_BUTTON, "1");
+  // The desktop-style UI needs a landscape screen on a phone.
+  SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+#endif
 
 #if defined(__linux__) && !defined(__ANDROID__)
   // Prefer a native Wayland window over XWayland when running in a Wayland

@@ -1,0 +1,24 @@
+diff --git a/evalmath.cpp b/evalmath.cpp
+index 0fe7c43..ee97a55 100644
+--- a/evalmath.cpp
++++ b/evalmath.cpp
+@@ -11,7 +11,7 @@
+ #include <charconv>
+ #include <format>
+ #include <cmath>
+-#if defined(__APPLE__)
++#if defined(__APPLE__) || defined(__ANDROID__)
+     #include <cerrno>
+     #include <cstdlib>
+     #include <xlocale.h>
+@@ -102,8 +102,8 @@ namespace details {
+ #pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
+ #endif
+         double value = 0;
+-#if defined(__APPLE__)
+-        //Apple's libc++ only implements the floating-point std::from_chars
++#if defined(__APPLE__) || defined(__ANDROID__)
++        //Apple's libc++ (and the Android NDK's, before LLVM 20) only implements the floating-point std::from_chars
+         //overload starting at a macOS 26.0 deployment target, which is far
+         //too new to require. Fall back to a locale-independent strtod here
+         //instead; num_str is always a syntactically valid, fully-consumed

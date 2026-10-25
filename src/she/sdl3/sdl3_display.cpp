@@ -66,7 +66,14 @@ SDL3Display::SDL3Display(int width, int height, int scale)
   instance()->gfx(
       [&]
       {
-        m_window = SDL_CreateWindow("", width, height, SDL_WINDOW_RESIZABLE);
+#ifdef ANDROID
+        // Use the whole screen (Android's immersive mode hides the status
+        // and navigation bars until the user swipes from an edge).
+        const SDL_WindowFlags flags = SDL_WINDOW_FULLSCREEN | SDL_WINDOW_RESIZABLE;
+#else
+        const SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE;
+#endif
+        m_window = SDL_CreateWindow("", width, height, flags);
         if (!m_window)
           throw DisplayCreationException(SDL_GetError());
 
@@ -74,9 +81,7 @@ SDL3Display::SDL3Display(int width, int height, int scale)
           m_renderer = SDL_CreateRenderer(m_window, nullptr);
 
         sdl::windowIdToDisplay[static_cast<int>(SDL_GetWindowID(m_window))] = this;
-        SDL_GetWindowSize(m_window, &width, &height);
-        m_width = width;
-        m_height = height;
+        updateWindowArea();
 
         SDL_HideCursor();
       },
@@ -174,6 +179,33 @@ void SDL3Display::setScale(int scale)
   recreateSurface();
 }
 
+void SDL3Display::updateWindowArea()
+{
+  int w = 0, h = 0;
+  SDL_GetWindowSize(m_window, &w, &h);
+  m_offsetX = 0;
+  m_offsetY = 0;
+#ifdef ANDROID
+  SDL_Rect safe;
+  if (SDL_GetWindowSafeArea(m_window, &safe) && safe.w > 0 && safe.h > 0)
+  {
+    m_offsetX = safe.x;
+    m_offsetY = safe.y;
+    w = safe.w;
+    h = safe.h;
+  }
+#endif
+  m_width = w;
+  m_height = h;
+}
+
+gfx::Point SDL3Display::windowToDisplay(float x, float y) const
+{
+  const int s = m_scale > 0 ? m_scale : 1;
+  return {static_cast<int>((x - static_cast<float>(m_offsetX)) / static_cast<float>(s)),
+          static_cast<int>((y - static_cast<float>(m_offsetY)) / static_cast<float>(s))};
+}
+
 void SDL3Display::recreateSurface()
 {
   if (!m_scale)
@@ -204,7 +236,32 @@ void SDL3Display::present()
   {
     const SDL_Rect empty{.x = 0, .y = 0, .w = 0, .h = 0};
     auto texture = static_cast<SDL3Surface*>(m_surface)->getTexture(&empty);
-    SDL_RenderTexture(m_renderer, texture, nullptr, nullptr);
+#ifdef ANDROID
+    // Use the whole output even if the renderer missed a size change (the
+    // window goes fullscreen right after it's created, and rotates).
+    SDL_SetRenderViewport(m_renderer, nullptr);
+#endif
+    if (m_offsetX == 0 && m_offsetY == 0)
+    {
+      SDL_RenderTexture(m_renderer, texture, nullptr, nullptr);
+    }
+    else
+    {
+      // Draw into the safe area only. Window coordinates are converted to
+      // renderer pixels in case the two differ (high-density screens).
+      int winW = 1, winH = 1, outW = 1, outH = 1;
+      SDL_GetWindowSize(m_window, &winW, &winH);
+      SDL_GetCurrentRenderOutputSize(m_renderer, &outW, &outH);
+      const float sx = static_cast<float>(outW) / static_cast<float>(winW > 0 ? winW : 1);
+      const float sy = static_cast<float>(outH) / static_cast<float>(winH > 0 ? winH : 1);
+      const SDL_FRect dst{.x = static_cast<float>(m_offsetX) * sx,
+                          .y = static_cast<float>(m_offsetY) * sy,
+                          .w = static_cast<float>(m_width) * sx,
+                          .h = static_cast<float>(m_height) * sy};
+      SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
+      SDL_RenderClear(m_renderer);
+      SDL_RenderTexture(m_renderer, texture, nullptr, &dst);
+    }
     SDL_RenderPresent(m_renderer);
   }
   else
@@ -231,7 +288,10 @@ void SDL3Display::flip(const gfx::Rect& bounds)
   }
 
   auto nativeSurface = SDL_GetWindowSurface(m_window);
-  SDL_Rect dst{.x = rect.x * m_scale, .y = rect.y * m_scale, .w = rect.w * m_scale, .h = rect.h * m_scale};
+  SDL_Rect dst{.x = m_offsetX + rect.x * m_scale,
+               .y = m_offsetY + rect.y * m_scale,
+               .w = rect.w * m_scale,
+               .h = rect.h * m_scale};
   SDL_BlitSurfaceScaled(static_cast<SDL_Surface*>(m_surface->nativeHandle()), &rect, nativeSurface, &dst,
                         SDL_SCALEMODE_NEAREST);
 }
@@ -316,7 +376,7 @@ bool SDL3Display::setNativeMouseCursor(NativeCursor cursor)
 
 void SDL3Display::setMousePosition(const gfx::Point& position)
 {
-  SDL_WarpMouseInWindow(m_window, m_scale * position.x, m_scale * position.y);
+  SDL_WarpMouseInWindow(m_window, m_offsetX + m_scale * position.x, m_offsetY + m_scale * position.y);
 }
 
 void SDL3Display::captureMouse()

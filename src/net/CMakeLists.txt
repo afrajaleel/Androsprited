@@ -3,6 +3,7 @@
 
 add_library(net-lib
   http_request.cpp
+  http_request_null.cpp
   http_response.cpp)
 
 target_link_libraries(net-lib

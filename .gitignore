@@ -22,7 +22,6 @@ build
 /*.snap
 /snap/.snapcraft/
 /.cache/
-/android/
 
 # --- JetBrains IDEs (IntelliJ, CLion, Rider, PhpStorm, WebStorm, etc.)
 .idea/

@@ -47,6 +47,7 @@
 #include "ui/intern.h"
 #include "ui/ui.h"
 
+#include <cstdlib>
 #include <algorithm>
 #include <list>
 #include <vector>
@@ -203,6 +204,12 @@ int init_module_gui()
     {
 #ifdef EMSCRIPTEN
       uiScale = 2;
+#elif defined(ANDROID)
+      // Suggested by the Android app from the screen density (see
+      // BespritedActivity.suggestedUiScale()).
+      uiScale = 2;
+      if (const char* suggested = std::getenv("BESPRITED_UI_SCALE"))
+        uiScale = MID(1, std::atoi(suggested), 4);
 #else
       // The initial window is only a small fallback size, so prefer the
       // real desktop height and only fall back to the window height when

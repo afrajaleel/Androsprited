@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Besprited</string>
+    <string name="storage_title">Access to your files</string>
+    <string name="storage_message">Besprited opens and saves sprites with its own file browser. To reach folders like Pictures, Downloads or Documents it needs the \"All files access\" permission.\n\nWithout it, Besprited can only use its own folder (Android/data/com.veritaware.besprited/files).</string>
+    <string name="storage_allow">Open settings</string>
+    <string name="storage_later">Not now</string>
+    <string name="share_title">Share sprite</string>
+</resources>

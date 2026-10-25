@@ -74,7 +74,9 @@ add_subdirectory(base)
 # Directory where base/config.h file is located
 include_directories(${BASE_INCLUDE_DIR})
 
-add_subdirectory(gen)
+if(NOT GEN_EXECUTABLE)
+  add_subdirectory(gen)
+endif()
 add_subdirectory(app)
 if (NOT GEN_ONLY)
 add_subdirectory(cfg)
@@ -114,10 +116,20 @@ if(WIN32)
     main/settings.manifest)
 endif()
 
-add_executable(besprited WIN32
-  main/main.cpp
-  ${win32_resources}
-  ${x11_resources})
+if(ANDROID)
+  # SDL's Java activity loads libmain.so and calls its SDL_main().
+  add_library(besprited SHARED
+    main/main.cpp
+    main/android_glue.cpp)
+  set_target_properties(besprited PROPERTIES OUTPUT_NAME main)
+  # Catch missing symbols when linking rather than when the app starts.
+  target_link_options(besprited PRIVATE -Wl,--no-undefined)
+else()
+  add_executable(besprited WIN32
+    main/main.cpp
+    ${win32_resources}
+    ${x11_resources})
+endif()
 
 target_link_libraries(besprited ${KEEP_INJECTIONS_BEGIN}
   app-lib
@@ -147,6 +159,10 @@ target_link_libraries(besprited ${KEEP_INJECTIONS_BEGIN}
   ${ZLIB_LIBRARIES}
   ${FREETYPE_LIBRARIES}
   ${PLATFORM_LIBS})
+
+if(ANDROID AND CMAKE_SYSTEM_NAME STREQUAL "Android")
+  target_link_libraries(besprited log android)
+endif()
 
 install(TARGETS besprited
   RUNTIME DESTINATION bin)

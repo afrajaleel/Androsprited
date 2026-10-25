@@ -2,6 +2,15 @@
 # LibreSprite | Copyright (C) 2021-2026 LibreSprite contributors
 # Besprited   | Copyright (C) 2026      Veritaware
 
+# The gen code generator: built here, or a pre-built one when cross-compiling
+if(GEN_EXECUTABLE)
+  set(GEN_COMMAND ${GEN_EXECUTABLE})
+  set(GEN_DEPENDS ${GEN_EXECUTABLE})
+else()
+  set(GEN_COMMAND ${CMAKE_BINARY_DIR}/bin/gen)
+  set(GEN_DEPENDS gen)
+endif()
+
 # Generate a ui::Widget for each widget in a XML file
 file(GLOB widget_files ${CMAKE_SOURCE_DIR}/data/widgets/*.xml)
 foreach(widget_file ${widget_files})
@@ -10,11 +19,11 @@ foreach(widget_file ${widget_files})
 
   add_custom_command(
     OUTPUT ${output_fn}
-    COMMAND ${CMAKE_BINARY_DIR}/bin/gen --input ${widget_file} --widgetid ${widget_name} > ${output_fn}.tmp
+    COMMAND ${GEN_COMMAND} --input ${widget_file} --widgetid ${widget_name} > ${output_fn}.tmp
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${output_fn}.tmp ${output_fn}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     MAIN_DEPENDENCY ${widget_file}
-    DEPENDS gen)
+    DEPENDS ${GEN_DEPENDS})
 
   list(APPEND generated_files ${output_fn})
 endforeach()
@@ -25,21 +34,21 @@ set(pref_xml ${CMAKE_SOURCE_DIR}/data/pref.xml)
 set(output_fn ${CMAKE_CURRENT_BINARY_DIR}/pref.xml.h)
 add_custom_command(
   OUTPUT ${output_fn}
-  COMMAND ${CMAKE_BINARY_DIR}/bin/gen --input ${pref_xml} --pref-h > ${output_fn}.tmp
+  COMMAND ${GEN_COMMAND} --input ${pref_xml} --pref-h > ${output_fn}.tmp
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${output_fn}.tmp ${output_fn}
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   MAIN_DEPENDENCY ${pref_xml}
-  DEPENDS gen)
+  DEPENDS ${GEN_DEPENDS})
 list(APPEND generated_files ${output_fn})
 
 set(output_fn ${CMAKE_CURRENT_BINARY_DIR}/pref.xml.cpp)
 add_custom_command(
   OUTPUT ${output_fn}
-  COMMAND ${CMAKE_BINARY_DIR}/bin/gen --input ${pref_xml} --pref-cpp > ${output_fn}.tmp
+  COMMAND ${GEN_COMMAND} --input ${pref_xml} --pref-cpp > ${output_fn}.tmp
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${output_fn}.tmp ${output_fn}
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   MAIN_DEPENDENCY ${pref_xml}
-  DEPENDS gen)
+  DEPENDS ${GEN_DEPENDS})
 list(APPEND generated_files ${output_fn})
 
 # Generate generated_skin.h from data/skins/default/skin.xml
@@ -47,11 +56,11 @@ set(skin_xml ${CMAKE_SOURCE_DIR}/data/skins/default/skin.xml)
 set(output_fn ${CMAKE_CURRENT_BINARY_DIR}/skin.xml.h)
 add_custom_command(
   OUTPUT ${output_fn}
-  COMMAND ${CMAKE_BINARY_DIR}/bin/gen --input ${skin_xml} --skin > ${output_fn}.tmp
+  COMMAND ${GEN_COMMAND} --input ${skin_xml} --skin > ${output_fn}.tmp
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${output_fn}.tmp ${output_fn}
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   MAIN_DEPENDENCY ${skin_xml}
-  DEPENDS gen)
+  DEPENDS ${GEN_DEPENDS})
 list(APPEND generated_files ${output_fn})
 
 # Directory where generated files by "gen" utility will stay.

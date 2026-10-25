@@ -37,6 +37,7 @@ if(USE_SDL3_BACKEND)
   list(APPEND SHE_SOURCES
     sdl3/sdl3_display.cpp
     sdl3/sdl3_surface.cpp
+    sdl3/sdl3_touch.cpp
     sdl3/she.cpp)
 endif()
 
