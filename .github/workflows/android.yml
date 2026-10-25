@@ -99,9 +99,17 @@ jobs:
           echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
           export BESPRITED_KEYSTORE="$RUNNER_TEMP/release.keystore"
         fi
-        gradle --no-daemon assembleRelease \
+        set -o pipefail
+        if ! gradle --no-daemon assembleRelease \
           -PversionCode=${{ github.run_number }} \
-          -PversionName="$(git rev-parse --short HEAD)"
+          -PversionName="$(git rev-parse --short HEAD)" 2>&1 | tee "$RUNNER_TEMP/gradle.log"; then
+          # Surface Gradle's error report as an annotation on the run summary.
+          sed -n '/What went wrong/,/Try:/p' "$RUNNER_TEMP/gradle.log" | head -40 | tr '\n' '|' \
+            | cut -c1-3900 | sed 's/^/::error title=gradle::/'
+          echo
+          grep -E "error:|e: " "$RUNNER_TEMP/gradle.log" | head -10 | while IFS= read -r l; do echo "::error title=gradle::${l:0:900}"; done
+          exit 1
+        fi
         mkdir -p ../dist
         cp app/build/outputs/apk/release/app-release.apk ../dist/besprited-android-${{ github.run_number }}.apk
 
