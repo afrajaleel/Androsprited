@@ -8,6 +8,9 @@
 #pragma once
 
 #include "base/mutex.h"
+// Full definition needed: a std::unique_ptr member destroys it (the
+// Android NDK compiler checks this when reading the header).
+#include "base/thread.h"
 
 #include <memory>
 #include <vector>

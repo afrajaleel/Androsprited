@@ -9,6 +9,9 @@
 
 #include "app/cmd.h"
 #include "app/cmd/with_document.h"
+// Full definition needed: a std::unique_ptr member destroys it (the
+// Android NDK compiler checks this when reading the header).
+#include "doc/mask.h"
 
 #include <memory>
 

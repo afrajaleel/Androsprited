@@ -15,6 +15,9 @@
 #include "filters/filter_indexed_data.h"
 #include "filters/filter_manager.h"
 #include "gfx/rect.h"
+// Full definition needed: a std::unique_ptr member destroys it (the
+// Android NDK compiler checks this when reading the header).
+#include "doc/mask.h"
 
 #include <cstring>
 #include <memory>
