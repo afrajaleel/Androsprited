@@ -27,7 +27,7 @@ jobs:
         submodules: 'recursive'
 
     - name: Set up Java 17
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: temurin
         java-version: '17'
@@ -65,7 +65,16 @@ jobs:
         key: android-deps-${{ env.NDK_VERSION }}-${{ hashFiles('android/fetch-sources.sh', 'android/deps/**') }}
 
     - name: Build native libraries
-      run: android/build-native.sh
+      run: |
+        set -o pipefail
+        if ! android/build-native.sh 2>&1 | tee "$RUNNER_TEMP/native.log"; then
+          # Surface the first errors as annotations on the run summary.
+          grep -n -E "error:|CMake Error|FAILED:|undefined reference|fatal:" "$RUNNER_TEMP/native.log" \
+            | grep -v -E "Werror|error\.h|jerror|errno|-Wno-error" | head -12 \
+            | while IFS= read -r line; do echo "::error title=build-native::${line:0:900}"; done
+          tail -n 25 "$RUNNER_TEMP/native.log" | tr '\n' '|' | sed 's/^/::error title=build-native tail::/; s/$/\n/' | cut -c1-3900
+          exit 1
+        fi
 
     - name: Set up Gradle
       uses: gradle/actions/setup-gradle@v4
