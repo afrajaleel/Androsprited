@@ -27,8 +27,7 @@
         </splitter>
         <vbox noborders="true" id="touch_bar_alt_placeholder" />
       </hbox>
-      <!-- Used in portrait orientation on phones (see MainWindow::applyOrientation) -->
-      <vbox noborders="true" id="color_bar_bottom_placeholder" />
+      <!-- Touch bar at the bottom (see MainWindow::placeTouchBar) -->
       <hbox noborders="true" id="touch_bar_bottom_placeholder" />
       <hbox noborders="true" id="status_bar_placeholder" />
     </vbox>

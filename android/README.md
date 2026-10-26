@@ -44,10 +44,23 @@ Actions): `ANDROID_KEYSTORE_B64` (contents of the `.b64` file),
 
 ## Using it on a phone
 
-The app uses the whole screen and follows the phone's rotation (unless
-rotation is locked). In landscape the panels sit beside the canvas; in
-portrait the palette, color picker and touch buttons move to rows below the
-canvas, and the timeline (when shown) goes under the canvas.
+The app follows the phone's rotation (unless rotation is locked) and runs
+fullscreen: the status and navigation bars are hidden (swipe from an edge
+to see them) and the UI also uses the camera cutout area. **View > Toggle
+Fullscreen** switches to a normal window with the bars shown; the choice is
+remembered.
+
+**Layouts (View > Layout):**
+
+- **Phone:** the color bar and the layers/timeline share one panel with
+  tabs (*Colors* / *Layers*), below the canvas in portrait or right of it in
+  landscape. Drag the divider to resize it; **TIME** hides or shows it.
+- **Desktop:** panels beside the canvas, like Besprited on a computer.
+- **Auto** (default): Phone when the phone is upright, Desktop when it's
+  sideways.
+
+Each layout remembers its own touch bar position and panel size.
+**View > Alternate Touchbar** moves the touch bar left → right → bottom.
 
 | Touch                      | Does                                              |
 |----------------------------|---------------------------------------------------|
@@ -71,10 +84,15 @@ density.
 
 ### Files
 
-**File > Open** (and *Open File...* on the Home tab) shows Android's own
-file picker, so you can pick images from Downloads, the Gallery, Drive and
-so on. Picked files are copied into `Pictures/Besprited/Opened` and opened
-from there, so saving keeps your edits.
+Every "open a file" dialog (File > Open, Load Palette, Import Sprite Sheet,
+fonts, ...) shows Android's own file picker, so you can pick files from
+Downloads, the Gallery, Drive and so on. Picked files are copied into
+`Pictures/Besprited/Opened` and opened from there, so saving keeps your
+edits.
+
+Themes: **Edit > Preferences > Theme > Import...** installs a theme from a
+`.zip` (e.g. one downloaded from the LibreSprite themes page); then select
+it in the list.
 
 Saving uses Besprited's own file browser. On first launch the app asks for
 **All files access** so it can save anywhere (Pictures, Download, ...). New

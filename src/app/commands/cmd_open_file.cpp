@@ -31,12 +31,6 @@
 #include <cstdio>
 #include <memory>
 
-#ifdef ANDROID
-// main/android_glue.cpp: shows Android's file picker; the chosen files come
-// back as dropped files (which opens them).
-void _AndroidPickFiles();
-#endif
-
 namespace app
 {
 
@@ -112,14 +106,6 @@ void OpenFileCommand::onLoadParams(const Params& params)
 void OpenFileCommand::onExecute(Context* context)
 {
   Console console;
-
-#ifdef ANDROID
-  if (context->isUIAvailable() && m_filename.empty() && m_folder.empty())
-  {
-    ::_AndroidPickFiles();
-    return;
-  }
-#endif
 
   // interactive
   if (context->isUIAvailable() && m_filename.empty())

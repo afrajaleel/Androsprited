@@ -22,6 +22,7 @@ namespace app
 {
 
 class ColorBar;
+class PanelDock;
 class TouchBar;
 class ContextBar;
 class DevConsoleView;
@@ -79,6 +80,8 @@ public:
   void alternateTimeline();
   void alternateToolbar();
   void alternateTouchbar();
+  // Applies the phone or desktop layout (View > Layout, orientation).
+  void updateLayout();
   void toggleTouchbar();
 
   void showDataRecovery(crash::DataRecovery* dataRecovery);
@@ -105,7 +108,11 @@ private:
   DocumentView* getDocView();
   HomeView* getHomeView();
   void configureWorkspaceLayout();
-  void applyOrientation(bool portrait);
+  bool wantsPhoneLayout() const;
+  void applyLayout(bool phone, bool portrait);
+  void rememberDockSize();
+  int touchBarPosition() const;
+  void placeTouchBar();
 
   MainMenuBar* m_menuBar;
   ContextBar* m_contextBar;
@@ -121,7 +128,11 @@ private:
   HomeView* m_homeView;
   DevConsoleView* m_devConsoleView;
   Notifications* m_notifications;
-  bool m_portrait = false;
+  PanelDock* m_dock = nullptr;
+  bool m_portrait = false;        // Window taller than wide
+  bool m_phoneLayout = false;     // Layout currently applied
+  bool m_layoutPortrait = false;  // Orientation the layout was applied for
+  bool m_layoutApplied = false;
 };
 
 } // namespace app

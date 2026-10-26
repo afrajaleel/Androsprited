@@ -32,6 +32,11 @@
 
 #include "options.xml.h"
 
+#ifdef ANDROID
+// main/android_glue.cpp: installs a theme .zip chosen with Android's picker.
+std::vector<std::string> android_import_theme();
+#endif
+
 namespace app
 {
 
@@ -247,6 +252,10 @@ public:
     themeList()->Change.connect(base::Bind<void>(&OptionsWindow::onThemeChange, this));
     selectTheme()->Click.connect(base::Bind<void>(&OptionsWindow::onSelectTheme, this));
     openThemeFolder()->Click.connect(base::Bind<void>(&OptionsWindow::onOpenThemeFolder, this));
+#ifdef ANDROID
+    // No folders to open on a phone; install a theme .zip instead.
+    openThemeFolder()->setText("&Import...");
+#endif
 
     // Apply button
     buttonApply()->Click.connect(base::Bind<void>(&OptionsWindow::saveConfig, this));
@@ -528,9 +537,34 @@ private:
 
   void onOpenThemeFolder()
   {
+#ifdef ANDROID
+    // Pick a theme .zip (e.g. from Downloads) and install it.
+    auto installed = ::android_import_theme();
+    if (installed.empty())
+      return;
+    const std::string name = base::get_file_name(installed.front());
+    auto children = themeList()->children();
+    for (auto* child : children)
+    {
+      themeList()->removeChild(child);
+      delete child;
+    }
+    loadThemes();
+    for (auto* child : themeList()->children())
+    {
+      auto* item = dynamic_cast<ThemeItem*>(child);
+      if (item && item->themeName() == name)
+      {
+        themeList()->selectChild(item);
+        break;
+      }
+    }
+    onThemeChange();
+#else
     ThemeItem* item = dynamic_cast<ThemeItem*>(themeList()->getSelectedChild());
     if (item)
       item->openFolder();
+#endif
   }
 
   void onCursorColorType()

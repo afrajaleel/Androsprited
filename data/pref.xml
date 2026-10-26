@@ -144,6 +144,18 @@
     <section id="touch_bar" text="Touchbar">
       <option id="visible" type="bool" default="false" />
       <option id="alternate_position" type="bool" default="false" />
+      <option id="phone_position" type="int" default="2" />
+      <option id="desktop_position" type="int" default="-1" />
+    </section>
+    <!-- touch_bar phone/desktop_position: 0 left, 1 right, 2 bottom (-1 desktop: use alternate_position).
+         panel_layout mode: 0 auto (phones: phone layout when upright), 1 phone, 2 desktop;
+         phone_tab: selected tab of the phone layout's panel dock;
+         phone_*_size: canvas share (percent) of the screen in portrait/landscape. -->
+    <section id="panel_layout">
+      <option id="mode" type="int" default="0" />
+      <option id="phone_tab" type="int" default="0" />
+      <option id="phone_portrait_size" type="int" default="62" />
+      <option id="phone_landscape_size" type="int" default="70" />
     </section>
     <section id="status_bar">
       <option id="focus_frame_field_on_mouseover" type="bool" default="false" />

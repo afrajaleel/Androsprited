@@ -185,6 +185,7 @@ add_library(app-lib
   commands/cmd_alternate_timeline.cpp
   commands/cmd_alternate_toolbar.cpp
   commands/cmd_alternate_touchbar.cpp
+  commands/cmd_panel_layout.cpp
   commands/cmd_background_from_layer.cpp
   commands/cmd_cancel.cpp
   commands/cmd_canvas_size.cpp
@@ -400,6 +401,7 @@ add_library(app-lib
   ui/brush_popup.cpp
   ui/button_set.cpp
   ui/color_bar.cpp
+  ui/panel_dock.cpp
   ui/touch_bar.cpp
   ui/color_button.cpp
   ui/color_popup.cpp

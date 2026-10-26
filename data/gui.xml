@@ -795,6 +795,17 @@
         <item command="AlternateTimeline" text="Alternate Timeline" />
         <item command="ToggleTouchbar" text="Touchbar" />
         <item command="AlternateTouchbar" text="Alternate Touchbar" />
+        <menu text="La&amp;yout">
+          <item command="PanelLayout" text="&amp;Auto (phone layout when upright)">
+            <param name="mode" value="auto" />
+          </item>
+          <item command="PanelLayout" text="&amp;Phone (tabbed panels)">
+            <param name="mode" value="phone" />
+          </item>
+          <item command="PanelLayout" text="&amp;Desktop (panels beside canvas)">
+            <param name="mode" value="desktop" />
+          </item>
+        </menu>
         <item command="TogglePreview" text="Previe&amp;w" />
         <item command="AlternateToolbar" text="Alternate Toolbar" />
         <item command="FullscreenPreview" text="&amp;Fullscreen Preview" />

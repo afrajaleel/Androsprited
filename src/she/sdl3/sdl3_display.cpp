@@ -15,6 +15,7 @@
 #include "base/exception.h"
 #include "base/string.h"
 #include "she/common/system.h"
+#include "she/event_queue.h"
 #include "she/logger.h"
 #include "she/native_cursor.h"
 #include "she/sdl3/sdl3_display.h"
@@ -23,6 +24,7 @@
 #include <SDL3/SDL.h>
 
 #include <cstdint>
+#include <cstdlib>
 #include <sstream>
 #include <unordered_map>
 #include <memory>
@@ -34,6 +36,11 @@
 // own SDL_EVENT_PEN_* events, handled in she.cpp - no per-window tablet
 // loading is needed here anymore. nativeHandle() now goes through
 // SDL_GetWindowProperties() instead of the removed SDL_GetWindowWMInfo().
+
+#ifdef ANDROID
+// main/android_glue.cpp: hides/shows the system bars and remembers it.
+void _AndroidSetFullscreen(bool fullscreen);
+#endif
 
 namespace she
 {
@@ -67,9 +74,13 @@ SDL3Display::SDL3Display(int width, int height, int scale)
       [&]
       {
 #ifdef ANDROID
-        // Use the whole screen (Android's immersive mode hides the status
-        // and navigation bars until the user swipes from an edge).
-        const SDL_WindowFlags flags = SDL_WINDOW_FULLSCREEN | SDL_WINDOW_RESIZABLE;
+        // Fullscreen by default: Android's immersive mode hides the status
+        // and navigation bars (until swiped in from an edge) and the UI also
+        // uses the camera cutout area. View > Fullscreen toggles it; the
+        // app remembers the choice (BESPRITED_FULLSCREEN).
+        const char* fs = std::getenv("BESPRITED_FULLSCREEN");
+        m_isFullscreen = !(fs && fs[0] == '0');
+        const SDL_WindowFlags flags = (m_isFullscreen ? SDL_WINDOW_FULLSCREEN : 0) | SDL_WINDOW_RESIZABLE;
 #else
         const SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE;
 #endif
@@ -116,6 +127,16 @@ void SDL3Display::toggleFullscreen()
 {
   m_isFullscreen = !m_isFullscreen;
   SDL_SetWindowFullscreen(m_window, m_isFullscreen);
+#ifdef ANDROID
+  ::_AndroidSetFullscreen(m_isFullscreen);
+  // The window keeps its size, only the usable area changes: relayout.
+  updateWindowArea();
+  recreateSurface();
+  Event ev;
+  ev.setType(Event::ResizeDisplay);
+  ev.setDisplay(this);
+  EventQueue::instance()->queueEvent(ev);
+#endif
 }
 
 bool SDL3Display::setIcon(Surface* surface)
@@ -186,8 +207,10 @@ void SDL3Display::updateWindowArea()
   m_offsetX = 0;
   m_offsetY = 0;
 #ifdef ANDROID
+  // In a normal window, keep the UI clear of the camera cutout and system
+  // bars; in fullscreen use every pixel.
   SDL_Rect safe;
-  if (SDL_GetWindowSafeArea(m_window, &safe) && safe.w > 0 && safe.h > 0)
+  if (!m_isFullscreen && SDL_GetWindowSafeArea(m_window, &safe) && safe.w > 0 && safe.h > 0)
   {
     m_offsetX = safe.x;
     m_offsetY = safe.y;

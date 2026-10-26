@@ -11,6 +11,7 @@
 #endif
 
 #include "app/ui/main_window.h"
+#include "app/ui/panel_dock.h"
 
 #include "app/app.h"
 #include "app/app_menus.h"
@@ -71,6 +72,8 @@ MainWindow::MainWindow()
   m_previewEditor = new PreviewEditorWindow();
   m_timeline = new Timeline();
   m_touchBar = TouchBar::create(touchbarParent->align());
+  m_dock = new PanelDock({"Colors", "Layers"});
+  m_dock->PanelChange.connect([](int index) { Preferences::instance().panelLayout.phoneTab(index); });
 
   m_workspace->setTabsBar(m_tabsBar);
   m_workspace->ActiveViewChanged.connect(&MainWindow::onActiveViewChange, this);
@@ -129,6 +132,13 @@ MainWindow::MainWindow()
   }
   timelineSplitter()->setAlign(verticalTimeline ? HORIZONTAL : VERTICAL);
 
+#if defined(ANDROID)
+  // On phones the timeline lives in the phone layout's panel dock; show it
+  // (TIME hides it to make room for the canvas).
+  if (!has_config_value("general", "visible_timeline"))
+    Preferences::instance().general.visibleTimeline(true);
+#endif
+
   bool touchBarVisible = Preferences::instance().touchBar.visible();
   if (!has_config_value("touch_bar", "visible"))
   {
@@ -163,15 +173,22 @@ void MainWindow::alternateToolbar()
   remapWindow();
 }
 
+// View > Alternate Touchbar: cycles left -> right -> bottom -> left, saved
+// separately for the phone and desktop layouts.
 void MainWindow::alternateTouchbar()
 {
-  auto left = !Preferences::instance().touchBar.alternatePosition();
-  Preferences::instance().touchBar.alternatePosition(left);
-  bool altTouchBar = Preferences::instance().touchBar.alternatePosition();
-  auto touchbarParent = altTouchBar ? touchBarAltPlaceholder() : touchBarPlaceholder();
-  m_touchBar->parent()->removeChild(m_touchBar.get());
-  touchbarParent->addChild(m_touchBar.get());
-  remapWindow();
+  const int next = (touchBarPosition() + 1) % 3;
+  if (m_phoneLayout)
+  {
+    Preferences::instance().touchBar.phonePosition(next);
+  }
+  else
+  {
+    Preferences::instance().touchBar.desktopPosition(next);
+    Preferences::instance().touchBar.alternatePosition(next == 1);
+  }
+  placeTouchBar();
+  configureWorkspaceLayout();
 }
 
 void MainWindow::toggleTouchbar()
@@ -197,6 +214,9 @@ MainWindow::~MainWindow()
   }
   delete m_contextBar;
   delete m_previewEditor;
+  // The dock is only in the widget tree (which deletes it) in phone layout.
+  if (m_dock && !m_dock->parent())
+    delete m_dock;
 
   // Destroy the workspace first so ~Editor can dettach slots from
   // ColorBar. TODO this is a terrible hack for slot/signal stuff,
@@ -325,59 +345,138 @@ bool MainWindow::onProcessMessage(ui::Message* msg)
 
 void MainWindow::onResize(ui::ResizeEvent& ev)
 {
-#ifdef ANDROID
-  // Phones: rearrange the panels when the screen rotates.
   const gfx::Rect& rc = ev.bounds();
   if (rc.w > 0 && rc.h > 0)
-    applyOrientation(rc.h > rc.w);
-#endif
+  {
+    m_portrait = (rc.h > rc.w);
+    updateLayout();
+  }
   Window::onResize(ev);
 }
 
-// In portrait orientation the screen is too narrow for panels beside the
-// canvas, so the color bar and touch bar go below it (in rows) and the
-// timeline goes under the canvas. Landscape restores the usual layout.
-void MainWindow::applyOrientation(bool portrait)
+// Phone layout when chosen in View > Layout, or (Auto) on a phone held
+// upright. Desktop builds only use it when chosen explicitly.
+bool MainWindow::wantsPhoneLayout() const
 {
-  if (portrait == m_portrait)
-    return;
-  m_portrait = portrait;
-
-  // Color bar
-  m_colorBar->parent()->removeChild(m_colorBar);
-  m_colorBar->setHorizontal(portrait);
-  if (portrait)
+  switch (Preferences::instance().panelLayout.mode())
   {
-    colorBarBottomPlaceholder()->addChild(m_colorBar);
+  case 1:
+    return true;
+  case 2:
+    return false;
+  default:
+#ifdef ANDROID
+    return m_portrait;
+#else
+    return false;
+#endif
+  }
+}
+
+void MainWindow::updateLayout()
+{
+  const bool phone = wantsPhoneLayout();
+  if (m_layoutApplied && phone == m_phoneLayout && m_portrait == m_layoutPortrait)
+    return;
+  applyLayout(phone, m_portrait);
+}
+
+// Desktop layout: color bar beside the canvas, timeline below or beside it.
+// Phone layout: the color bar and the timeline share a tabbed panel (the
+// dock), below the canvas in portrait or right of it in landscape; the
+// splitter between canvas and dock can be dragged.
+void MainWindow::applyLayout(bool phone, bool portrait)
+{
+  rememberDockSize();
+  m_layoutApplied = true;
+  m_phoneLayout = phone;
+  m_layoutPortrait = portrait;
+
+  // Take the movable panels out of wherever they are.
+  m_dock->releasePanels();
+  if (m_dock->parent())
+    m_dock->parent()->removeChild(m_dock);
+  if (m_colorBar->parent())
+    m_colorBar->parent()->removeChild(m_colorBar);
+  if (m_timeline->parent())
+    m_timeline->parent()->removeChild(m_timeline);
+
+  if (phone)
+  {
+    m_colorBar->setHorizontal(portrait);
+    m_dock->setPanel(0, m_colorBar);
+    m_dock->setPanel(1, m_timeline);
+    m_dock->selectPanel(Preferences::instance().panelLayout.phoneTab());
+    timelinePlaceholder()->addChild(m_dock);
     colorBarSplitter()->setPosition(0);
+    timelineSplitter()->setAlign(portrait ? VERTICAL : HORIZONTAL);
+    timelineSplitter()->setPosition(portrait ? Preferences::instance().panelLayout.phonePortraitSize()
+                                             : Preferences::instance().panelLayout.phoneLandscapeSize());
   }
   else
   {
+    m_colorBar->setHorizontal(false);
     colorBarPlaceholder()->addChild(m_colorBar);
     colorBarSplitter()->setPosition(m_colorBar->sizeHint().w);
+    timelinePlaceholder()->addChild(m_timeline);
+    timelineSplitter()->setAlign(Preferences::instance().general.verticalTimeline() ? HORIZONTAL : VERTICAL);
+    timelineSplitter()->setPosition(75);
   }
 
-  // Touch bar
-  m_touchBar->parent()->removeChild(m_touchBar.get());
-  m_touchBar->setAlign(portrait ? HORIZONTAL : VERTICAL);
-  if (portrait)
-    touchBarBottomPlaceholder()->addChild(m_touchBar.get());
-  else if (Preferences::instance().touchBar.alternatePosition())
-    touchBarAltPlaceholder()->addChild(m_touchBar.get());
-  else
-    touchBarPlaceholder()->addChild(m_touchBar.get());
-
-  // Timeline under the canvas in portrait; beside it (if so configured) in
-  // landscape.
-  bool besideCanvas = !portrait && Preferences::instance().general.verticalTimeline();
-  timelineSplitter()->setAlign(besideCanvas ? HORIZONTAL : VERTICAL);
-  timelineSplitter()->setPosition(portrait ? 70 : 75);
-
+  placeTouchBar();
   configureWorkspaceLayout();
+}
+
+// Stores the canvas/dock split of the phone layout so it comes back the
+// same next time (separately for portrait and landscape).
+void MainWindow::rememberDockSize()
+{
+  if (!m_layoutApplied || !m_phoneLayout)
+    return;
+  const int size = static_cast<int>(timelineSplitter()->getPosition());
+  if (size <= 5 || size >= 95)
+    return;
+  if (m_layoutPortrait)
+    Preferences::instance().panelLayout.phonePortraitSize(size);
+  else
+    Preferences::instance().panelLayout.phoneLandscapeSize(size);
+}
+
+// Touch bar position for the current layout: 0 left, 1 right, 2 bottom.
+int MainWindow::touchBarPosition() const
+{
+  if (m_phoneLayout)
+    return Preferences::instance().touchBar.phonePosition();
+  const int pos = Preferences::instance().touchBar.desktopPosition();
+  if (pos >= 0)
+    return pos;
+  return Preferences::instance().touchBar.alternatePosition() ? 1 : 0;
+}
+
+void MainWindow::placeTouchBar()
+{
+  if (m_touchBar->parent())
+    m_touchBar->parent()->removeChild(m_touchBar.get());
+  switch (touchBarPosition())
+  {
+  case 1:
+    m_touchBar->setAlign(VERTICAL);
+    touchBarAltPlaceholder()->addChild(m_touchBar.get());
+    break;
+  case 2:
+    m_touchBar->setAlign(HORIZONTAL);
+    touchBarBottomPlaceholder()->addChild(m_touchBar.get());
+    break;
+  default:
+    m_touchBar->setAlign(VERTICAL);
+    touchBarPlaceholder()->addChild(m_touchBar.get());
+    break;
+  }
 }
 
 void MainWindow::onSaveLayout(SaveLayoutEvent& ev)
 {
+  rememberDockSize();
   Window::onSaveLayout(ev);
 }
 
@@ -506,8 +605,7 @@ void MainWindow::configureWorkspaceLayout()
 
   m_menuBar->setVisible(normal);
   m_tabsBar->setVisible(normal);
-  colorBarPlaceholder()->setVisible(normal && isDoc && !m_portrait);
-  colorBarBottomPlaceholder()->setVisible(normal && isDoc && m_portrait);
+  colorBarPlaceholder()->setVisible(normal && isDoc && !m_phoneLayout);
   m_touchBar->setVisible(normal && isDoc && Preferences::instance().touchBar.visible());
   m_toolBar->setVisible(normal && isDoc);
   m_statusBar->setVisible(normal);

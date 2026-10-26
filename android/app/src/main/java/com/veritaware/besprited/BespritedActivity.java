@@ -138,6 +138,9 @@ public class BespritedActivity extends SDLActivity {
         Os.setenv("HOME", files.getAbsolutePath(), true);
         Os.setenv("XDG_CONFIG_HOME", config.getAbsolutePath(), true);
         Os.setenv("TMPDIR", getCacheDir().getAbsolutePath(), true);
+
+        mFullscreen = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean("fullscreen", true);
+        Os.setenv("BESPRITED_FULLSCREEN", mFullscreen ? "1" : "0", true);
     }
 
     /** Where sprites are opened from and saved to by default. */
@@ -314,51 +317,192 @@ public class BespritedActivity extends SDLActivity {
     }
 
     // ------------------------------------------------------------------
-    // File > Open with Android's file picker, called from native code
+    // Android's file picker, called from native code
+    //
+    // Native code (android_glue.cpp) calls pickFile() or pickTheme() and
+    // waits; the result comes back through nativeFilesPicked() (an empty
+    // array when cancelled).
 
-    private static final int REQUEST_PICK_FILES = 0x5e17;
+    private static final int REQUEST_PICK_FILE = 0x5e17;
+    private static final int REQUEST_PICK_THEME = 0x5e18;
 
-    /** Called from _AndroidPickFiles() in src/main/android_glue.cpp. */
-    public void pickFiles() {
+    private static native void nativeFilesPicked(String[] paths);
+
+    /** Any "open a file" dialog: picks one file and copies it locally. */
+    public void pickFile() {
+        startPicker(REQUEST_PICK_FILE, "*/*");
+    }
+
+    /** Preferences > Theme > Import: picks a theme .zip and installs it. */
+    public void pickTheme() {
+        startPicker(REQUEST_PICK_THEME, "application/zip");
+    }
+
+    private void startPicker(int request, String mime) {
         runOnUiThread(() -> {
             try {
                 Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.setType("*/*");
-                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-                startActivityForResult(intent, REQUEST_PICK_FILES);
+                intent.setType(mime);
+                if (!"*/*".equals(mime)) {
+                    // Some file managers label zips differently.
+                    intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {
+                        mime, "application/x-zip-compressed", "application/octet-stream" });
+                }
+                startActivityForResult(intent, request);
             } catch (Exception e) {
                 Log.e(TAG, "Could not open the file picker", e);
+                nativeFilesPicked(new String[0]);
             }
         });
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode != REQUEST_PICK_FILES) {
+        if (requestCode != REQUEST_PICK_FILE && requestCode != REQUEST_PICK_THEME) {
             super.onActivityResult(requestCode, resultCode, data);
             return;
         }
-        if (resultCode != RESULT_OK || data == null) {
+        final Uri uri = (resultCode == RESULT_OK && data != null) ? data.getData() : null;
+        if (uri == null) {
+            nativeFilesPicked(new String[0]);
             return;
-        }
-        java.util.List<Uri> uris = new java.util.ArrayList<>();
-        if (data.getClipData() != null) {
-            for (int i = 0; i < data.getClipData().getItemCount(); i++) {
-                uris.add(data.getClipData().getItemAt(i).getUri());
-            }
-        } else if (data.getData() != null) {
-            uris.add(data.getData());
         }
         // Copying can take a moment for big or cloud files; don't block the UI.
         new Thread(() -> {
-            for (Uri uri : uris) {
-                String path = importUri(uri);
-                if (path != null) {
-                    SDLActivity.onNativeDropFile(path);
+            String path = (requestCode == REQUEST_PICK_THEME) ? installTheme(uri) : importUri(uri);
+            nativeFilesPicked(path != null ? new String[] { path } : new String[0]);
+        }).start();
+    }
+
+    /**
+     * Unzips a theme into Besprited's user theme folder and returns the
+     * theme's folder. Accepts zips with the theme files at the top level or
+     * inside one folder.
+     */
+    private String installTheme(Uri uri) {
+        try {
+            File skins = new File(new File(getFilesDir(), "config"), "besprited/data/skins");
+            skins.mkdirs();
+            String name = displayName(getContentResolver(), uri);
+            if (name.toLowerCase().endsWith(".zip")) {
+                name = name.substring(0, name.length() - 4);
+            }
+            File staging = new File(getCacheDir(), "theme-import");
+            deleteRecursively(staging);
+            staging.mkdirs();
+            String canonicalStaging = staging.getCanonicalPath() + File.separator;
+            try (InputStream in = getContentResolver().openInputStream(uri);
+                 java.util.zip.ZipInputStream zip = new java.util.zip.ZipInputStream(in)) {
+                java.util.zip.ZipEntry entry;
+                while ((entry = zip.getNextEntry()) != null) {
+                    File out = new File(staging, entry.getName());
+                    // Refuse entries that would land outside the folder.
+                    if (!out.getCanonicalPath().startsWith(canonicalStaging)) {
+                        continue;
+                    }
+                    if (entry.isDirectory()) {
+                        out.mkdirs();
+                        continue;
+                    }
+                    File parent = out.getParentFile();
+                    if (parent != null) {
+                        parent.mkdirs();
+                    }
+                    try (OutputStream os = new FileOutputStream(out)) {
+                        copy(zip, os);
+                    }
                 }
             }
-        }).start();
+            // A single top-level folder holding theme.xml is the theme itself.
+            File root = staging;
+            File[] top = staging.listFiles();
+            if (top != null && top.length == 1 && top[0].isDirectory()
+                && !new File(staging, "theme.xml").exists()) {
+                root = top[0];
+                name = top[0].getName();
+            }
+            if (!new File(root, "theme.xml").exists()) {
+                Log.w(TAG, "No theme.xml in " + uri);
+                deleteRecursively(staging);
+                return null;
+            }
+            File dest = new File(skins, name.replace('/', '_'));
+            deleteRecursively(dest);
+            if (!root.renameTo(dest)) {
+                Log.w(TAG, "Could not move theme into " + dest);
+                return null;
+            }
+            deleteRecursively(staging);
+            return dest.getAbsolutePath();
+        } catch (Exception e) {
+            Log.e(TAG, "Could not install theme " + uri, e);
+            return null;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Fullscreen (View > Fullscreen), called from native code
+
+    private boolean mFullscreen = true;
+
+    /** Called from _AndroidSetFullscreen() in src/main/android_glue.cpp. */
+    public void setFullscreen(boolean fullscreen) {
+        mFullscreen = fullscreen;
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("fullscreen", fullscreen).apply();
+        // Run after SDL has applied its own window style for the change.
+        runOnUiThread(() -> getWindow().getDecorView().postDelayed(this::applySystemBars, 150));
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            applySystemBars();
+        }
+    }
+
+    /**
+     * Fullscreen: hide the status and navigation bars (a swipe from the edge
+     * shows them for a moment) and draw over the camera cutout. Otherwise
+     * show the bars and keep clear of the cutout.
+     */
+    private void applySystemBars() {
+        android.view.Window window = getWindow();
+        android.view.WindowManager.LayoutParams attrs = window.getAttributes();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            attrs.layoutInDisplayCutoutMode = mFullscreen
+                ? android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                : android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
+            window.setAttributes(attrs);
+            window.setDecorFitsSystemWindows(!mFullscreen);
+            android.view.WindowInsetsController controller = window.getInsetsController();
+            if (controller != null) {
+                int bars = android.view.WindowInsets.Type.statusBars()
+                         | android.view.WindowInsets.Type.navigationBars();
+                if (mFullscreen) {
+                    controller.setSystemBarsBehavior(
+                        android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                    controller.hide(bars);
+                } else {
+                    controller.show(bars);
+                }
+            }
+        } else {
+            attrs.layoutInDisplayCutoutMode = mFullscreen
+                ? android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                : android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
+            window.setAttributes(attrs);
+            int flags = mFullscreen
+                ? (android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                   | android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                   | android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                   | android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                   | android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                   | android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE)
+                : android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+            window.getDecorView().setSystemUiVisibility(flags);
+        }
     }
 
     // ------------------------------------------------------------------
