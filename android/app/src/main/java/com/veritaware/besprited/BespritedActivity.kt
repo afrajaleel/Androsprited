@@ -21,6 +21,8 @@ import android.view.WindowInsetsController
 import android.view.WindowManager
 import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import org.libsdl.app.SDLActivity
 import java.io.File
 import java.io.IOException
@@ -301,6 +303,21 @@ class BespritedActivity : SDLActivity() {
     // Sharing (File > Share), called from native code
 
     fun shareFile(path: String) = runOnUiThread { shareFile(this, File(path)) }
+
+    // ------------------------------------------------------------------
+    // On-screen keyboard, called from native code (she::set_input_rect)
+
+    /**
+     * SDL isn't told when the user closes the keyboard (back, swipe), so it
+     * would think it's still shown and not show it again. Tell SDL it's
+     * hidden when it is, right before a text field asks for it.
+     */
+    fun syncKeyboardState() {
+        val insets = ViewCompat.getRootWindowInsets(window.decorView)
+        if (insets?.isVisible(WindowInsetsCompat.Type.ime()) != true) {
+            SDLActivity.onNativeScreenKeyboardHidden()
+        }
+    }
 
     // ------------------------------------------------------------------
     // Storage permission

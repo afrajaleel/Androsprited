@@ -75,6 +75,7 @@ protected:
   virtual gfx::Rect onGetEntryTextBounds() const;
 
 private:
+  void requestKeyboard();
   enum class EntryCmd
   {
     NoOp,

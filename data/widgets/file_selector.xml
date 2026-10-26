@@ -1,5 +1,6 @@
 <!-- LibreSprite -->
 <!-- Copyright (C) 2001-2016 by David Capello -->
+<!-- Besprited | Copyright (C) 2026 Veritaware -->
 <gui>
   <window id="file_selector" text="">
   <vbox id="main">
@@ -19,7 +20,7 @@
 
       <label text="File type:" />
       <hbox cell_align="horizontal">
-        <combobox id="file_type" minwidth="70" />
+        <combobox id="file_type" minwidth="70" expansive="true" />
         <hbox id="resize_options">
           <label text="Resize:" />
           <combobox id="resize">
@@ -37,13 +38,17 @@
             <listitem text="1000%" value="10" />
           </combobox>
         </hbox>
-        <boxfiller />
-        <box horizontal="true" homogeneous="true">
-          <button text="&amp;OK" closewindow="true" id="ok" magnet="true" width="60" />
-          <button text="&amp;Cancel" closewindow="true" id="cancel" />
-        </box>
       </hbox>
     </grid>
+    <!-- On their own row so they never overlap the file type on narrow
+         (phone) screens. -->
+    <hbox>
+      <boxfiller />
+      <box horizontal="true" homogeneous="true">
+        <button text="&amp;OK" closewindow="true" id="ok" magnet="true" width="60" />
+        <button text="&amp;Cancel" closewindow="true" id="cancel" />
+      </box>
+    </hbox>
   </vbox>
   </window>
 </gui>

@@ -201,6 +201,20 @@ gfx::Rect Entry::getEntryTextBounds() const
   return onGetEntryTextBounds();
 }
 
+void Entry::requestKeyboard()
+{
+  if (isReadOnly() || !showsKeyboard())
+    return;
+  View* view = View::getView(this);
+  gfx::Rect rect = view ? view->viewportBounds() : bounds();
+  int scale = 2 * guiscale();
+  rect.x *= scale;
+  rect.y *= scale;
+  rect.h *= scale;
+  rect.w *= scale;
+  she::set_input_rect(rect);
+}
+
 bool Entry::onProcessMessage(Message* msg)
 {
   switch (msg->type())
@@ -217,15 +231,7 @@ bool Entry::onProcessMessage(Message* msg)
   case kFocusEnterMessage:
   {
     m_got_focus_message = true;
-    View* view = View::getView(this);
-    gfx::Rect rect = view ? view->viewportBounds() : bounds();
-    int scale = 2 * guiscale();
-    rect.x *= scale;
-    rect.y *= scale;
-    rect.h *= scale;
-    rect.w *= scale;
-    if (!isReadOnly() && showsKeyboard())
-      she::set_input_rect(rect);
+    requestKeyboard();
 
     m_timer.start();
 
@@ -371,6 +377,10 @@ bool Entry::onProcessMessage(Message* msg)
     break;
 
   case kMouseDownMessage:
+    // Tapping a field that already has focus brings back an on-screen
+    // keyboard the user closed.
+    if (hasFocus() && m_got_focus_message)
+      requestKeyboard();
     captureMouse();
 
   case kMouseMoveMessage:
