@@ -161,12 +161,13 @@ public class BespritedActivity extends SDLActivity {
 
     /**
      * Besprited's UI is drawn in pixels and scaled up by a whole number. On
-     * a phone, roughly the screen density keeps buttons big enough to tap
-     * while leaving room for the canvas. Changeable in Preferences.
+     * a phone, a bit more than the screen density keeps text readable and
+     * buttons big enough to tap (3x on a typical 1080p phone). Changeable in
+     * Edit > Preferences > UI Elements Scaling.
      */
     private int suggestedUiScale() {
         DisplayMetrics metrics = getResources().getDisplayMetrics();
-        int scale = Math.round(metrics.density * 0.8f);
+        int scale = Math.round(metrics.density * 1.15f);
         return Math.max(1, Math.min(4, scale));
     }
 
@@ -247,6 +248,11 @@ public class BespritedActivity extends SDLActivity {
         if (uri == null) {
             uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
         }
+        return importUri(uri);
+    }
+
+    /** Copies a content:// file into the documents folder; returns its path. */
+    private String importUri(Uri uri) {
         if (uri == null) {
             return null;
         }
@@ -305,6 +311,54 @@ public class BespritedActivity extends SDLActivity {
                 return file;
             }
         }
+    }
+
+    // ------------------------------------------------------------------
+    // File > Open with Android's file picker, called from native code
+
+    private static final int REQUEST_PICK_FILES = 0x5e17;
+
+    /** Called from _AndroidPickFiles() in src/main/android_glue.cpp. */
+    public void pickFiles() {
+        runOnUiThread(() -> {
+            try {
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("*/*");
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                startActivityForResult(intent, REQUEST_PICK_FILES);
+            } catch (Exception e) {
+                Log.e(TAG, "Could not open the file picker", e);
+            }
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode != REQUEST_PICK_FILES) {
+            super.onActivityResult(requestCode, resultCode, data);
+            return;
+        }
+        if (resultCode != RESULT_OK || data == null) {
+            return;
+        }
+        java.util.List<Uri> uris = new java.util.ArrayList<>();
+        if (data.getClipData() != null) {
+            for (int i = 0; i < data.getClipData().getItemCount(); i++) {
+                uris.add(data.getClipData().getItemAt(i).getUri());
+            }
+        } else if (data.getData() != null) {
+            uris.add(data.getData());
+        }
+        // Copying can take a moment for big or cloud files; don't block the UI.
+        new Thread(() -> {
+            for (Uri uri : uris) {
+                String path = importUri(uri);
+                if (path != null) {
+                    SDLActivity.onNativeDropFile(path);
+                }
+            }
+        }).start();
     }
 
     // ------------------------------------------------------------------

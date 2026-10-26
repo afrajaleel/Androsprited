@@ -37,22 +37,29 @@ void android_init()
     _AndroidStorageDir = dir;
 }
 
-// File > Share: hands the file to Android's share sheet.
-void _AndroidShareFile(const std::string& path)
-{
 #ifdef __ANDROID__
+// Calls a method of BespritedActivity: void name() or void name(String).
+static void call_activity(const char* name, const std::string* arg)
+{
   auto* env = static_cast<JNIEnv*>(SDL_GetAndroidJNIEnv());
   auto activity = static_cast<jobject>(SDL_GetAndroidActivity());
   if (!env || !activity)
     return;
 
   jclass cls = env->GetObjectClass(activity);
-  jmethodID shareFile = env->GetMethodID(cls, "shareFile", "(Ljava/lang/String;)V");
-  if (shareFile)
+  jmethodID method = env->GetMethodID(cls, name, arg ? "(Ljava/lang/String;)V" : "()V");
+  if (method)
   {
-    jstring jpath = env->NewStringUTF(path.c_str());
-    env->CallVoidMethod(activity, shareFile, jpath);
-    env->DeleteLocalRef(jpath);
+    if (arg)
+    {
+      jstring jarg = env->NewStringUTF(arg->c_str());
+      env->CallVoidMethod(activity, method, jarg);
+      env->DeleteLocalRef(jarg);
+    }
+    else
+    {
+      env->CallVoidMethod(activity, method);
+    }
   }
   if (env->ExceptionCheck())
   {
@@ -61,7 +68,25 @@ void _AndroidShareFile(const std::string& path)
   }
   env->DeleteLocalRef(cls);
   env->DeleteLocalRef(activity);
+}
+#endif
+
+// File > Share: hands the file to Android's share sheet.
+void _AndroidShareFile(const std::string& path)
+{
+#ifdef __ANDROID__
+  call_activity("shareFile", &path);
 #else
   (void)path;
+#endif
+}
+
+// File > Open: shows Android's file picker. BespritedActivity copies the
+// chosen files to the documents folder and sends them back as dropped
+// files, which opens them.
+void _AndroidPickFiles()
+{
+#ifdef __ANDROID__
+  call_activity("pickFiles", nullptr);
 #endif
 }

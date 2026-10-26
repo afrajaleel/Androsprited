@@ -68,8 +68,13 @@ density.
 
 ### Files
 
-Besprited uses its own file browser. On first launch it asks for **All files
-access** so it can open and save anywhere (Pictures, Download, ...). New
+**File > Open** (and *Open File...* on the Home tab) shows Android's own
+file picker, so you can pick images from Downloads, the Gallery, Drive and
+so on. Picked files are copied into `Pictures/Besprited/Opened` and opened
+from there, so saving keeps your edits.
+
+Saving uses Besprited's own file browser. On first launch the app asks for
+**All files access** so it can save anywhere (Pictures, Download, ...). New
 sprites are saved to `Pictures/Besprited` by default. Without that
 permission it still works, but only inside its own folder
 (`Android/data/com.veritaware.besprited/files`).
