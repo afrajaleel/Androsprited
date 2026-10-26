@@ -129,9 +129,9 @@ private:
   DevConsoleView* m_devConsoleView;
   Notifications* m_notifications;
   PanelDock* m_dock = nullptr;
-  bool m_portrait = false;        // Window taller than wide
-  bool m_phoneLayout = false;     // Layout currently applied
-  bool m_layoutPortrait = false;  // Orientation the layout was applied for
+  bool m_portrait = false;       // Window taller than wide
+  bool m_phoneLayout = false;    // Layout currently applied
+  bool m_layoutPortrait = false; // Orientation the layout was applied for
   bool m_layoutApplied = false;
 };
 

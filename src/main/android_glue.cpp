@@ -104,9 +104,8 @@ static std::condition_variable g_pickDone;
 static bool g_picking = false;
 static std::vector<std::string> g_picked;
 
-extern "C" JNIEXPORT void JNICALL Java_com_veritaware_besprited_BespritedActivity_nativeFilesPicked(JNIEnv* env,
-                                                                                                   jclass,
-                                                                                                   jobjectArray paths)
+extern "C" JNIEXPORT void JNICALL Java_com_veritaware_besprited_BespritedActivity_nativeFilesPicked(JNIEnv* env, jclass,
+                                                                                                    jobjectArray paths)
 {
   std::vector<std::string> result;
   const jsize count = paths ? env->GetArrayLength(paths) : 0;
