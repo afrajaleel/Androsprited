@@ -123,6 +123,8 @@ public:
     if (m_pref.general.showFullPath())
       showFullPath()->setSelected(true);
 
+    grayscaleMethod()->setSelectedItemIndex((int)m_pref.general.grayscaleMethod());
+
     dataRecoveryPeriod()->setSelectedItemIndex(
         dataRecoveryPeriod()->findItemIndexByValue(base::convert_to<std::string>(m_pref.general.dataRecoveryPeriod())));
 
@@ -279,6 +281,7 @@ public:
     m_pref.general.autoshowTimeline(autotimeline()->isSelected());
     m_pref.general.rewindOnStop(rewindOnStop()->isSelected());
     m_pref.general.showFullPath(showFullPath()->isSelected());
+    m_pref.general.grayscaleMethod(static_cast<app::gen::GrayscaleMethod>(grayscaleMethod()->getSelectedItemIndex()));
 
     bool expandOnMouseover = expandMenubarOnMouseover()->isSelected();
     m_pref.general.expandMenubarOnMouseover(expandOnMouseover);

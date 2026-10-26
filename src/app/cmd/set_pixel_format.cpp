@@ -15,6 +15,7 @@
 #include "app/cmd/replace_image.h"
 #include "app/cmd/set_cel_opacity.h"
 #include "app/cmd/set_palette.h"
+#include "app/color_utils.h"
 #include "app/document.h"
 #include "doc/cel.h"
 #include "doc/cels_range.h"
@@ -46,7 +47,7 @@ SetPixelFormat::SetPixelFormat(Sprite* sprite, const PixelFormat newFormat, cons
     const ImageRef old_image = cel->imageRef();
     const ImageRef new_image(render::convert_pixel_format(old_image.get(), nullptr, newFormat, m_dithering,
                                                           sprite->rgbMap(cel->frame()), sprite->palette(cel->frame()),
-                                                          cel->layer()->isBackground(), old_image->maskColor()));
+                                                          cel->layer()->isBackground(), old_image->maskColor(), color_utils::grayscale_method()));
 
     m_seq.add(new ReplaceImage(sprite, old_image, new_image));
   }

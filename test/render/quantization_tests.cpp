@@ -22,22 +22,23 @@ using namespace render;
 namespace
 {
 
-color_t rgbaToGray(const color_t c)
+color_t rgbaToGray(const color_t c, const GrayscaleMethod method = GrayscaleMethod::LUMA_709)
 {
   ImageRef src(Image::create(IMAGE_RGB, 1, 1));
   put_pixel(src.get(), 0, 0, c);
   ImageRef dst(
-    convert_pixel_format(src.get(), nullptr, IMAGE_GRAYSCALE, DitheringMethod::NONE, nullptr, nullptr, false, 0));
+    convert_pixel_format(src.get(), nullptr, IMAGE_GRAYSCALE, DitheringMethod::NONE, nullptr, nullptr, false, 0, method));
   return get_pixel(dst.get(), 0, 0);
 }
 
-color_t indexToGray(const Palette& palette, const color_t index, const bool isBackground, const color_t maskColor)
+color_t indexToGray(const Palette& palette, const color_t index, const bool isBackground, const color_t maskColor,
+                    const GrayscaleMethod method = GrayscaleMethod::LUMA_709)
 {
   ImageRef src(Image::create(IMAGE_INDEXED, 1, 1));
   src->setMaskColor(maskColor);
   put_pixel(src.get(), 0, 0, index);
   ImageRef dst(convert_pixel_format(src.get(), nullptr, IMAGE_GRAYSCALE, DitheringMethod::NONE, nullptr, &palette,
-                                    isBackground, maskColor));
+                                    isBackground, maskColor, method));
   return get_pixel(dst.get(), 0, 0);
 }
 
@@ -86,4 +87,35 @@ TEST(Quantization, IndexedToGrayscaleMaskColor)
   const color_t g = indexToGray(palette, 0, true, 0);
   EXPECT_EQ(128, graya_getv(g));
   EXPECT_EQ(255, graya_geta(g));
+}
+
+TEST(Quantization, RgbToGrayscaleHsvValueUsesMaxChannel)
+{
+  const color_t g = rgbaToGray(rgba(10, 200, 30, 180), GrayscaleMethod::HSV_VALUE);
+  EXPECT_EQ(200, graya_getv(g));
+  EXPECT_EQ(180, graya_geta(g));
+  EXPECT_EQ(255, graya_getv(rgbaToGray(rgba(255, 0, 0, 255), GrayscaleMethod::HSV_VALUE)));
+}
+
+TEST(Quantization, RgbToGrayscaleHsvValueKeepsGrays)
+{
+  for (const int v : {0, 1, 127, 128, 254, 255})
+    EXPECT_EQ(v, graya_getv(rgbaToGray(rgba(v, v, v, 255), GrayscaleMethod::HSV_VALUE))) << v;
+}
+
+TEST(Quantization, IndexedToGrayscaleHsvValue)
+{
+  const auto palettePtr = Palette::create(2);
+  palettePtr->setEntry(0, rgba(0, 0, 0, 0));
+  palettePtr->setEntry(1, rgba(0, 0, 255, 255));
+
+  EXPECT_EQ(255, graya_getv(indexToGray(*palettePtr, 1, false, 0, GrayscaleMethod::HSV_VALUE)));
+}
+
+TEST(Quantization, RgbToGray)
+{
+  EXPECT_EQ(54, rgb_to_gray(255, 0, 0, GrayscaleMethod::LUMA_709));
+  EXPECT_EQ(255, rgb_to_gray(255, 0, 0, GrayscaleMethod::HSV_VALUE));
+  EXPECT_EQ(128, rgb_to_gray(128, 128, 128, GrayscaleMethod::LUMA_709));
+  EXPECT_EQ(128, rgb_to_gray(128, 128, 128, GrayscaleMethod::HSV_VALUE));
 }

@@ -12,6 +12,7 @@
 
 #include "app/app.h"
 #include "app/commands/command.h"
+#include "app/color_utils.h"
 #include "app/console.h"
 #include "app/context.h"
 #include "app/file_selector.h"
@@ -197,7 +198,8 @@ void PasteTextCommand::onExecute(Context* ctx)
       {
         RgbMap* rgbmap = sprite->rgbMap(editor->frame());
         image.reset(render::convert_pixel_format(image.get(), nullptr, sprite->pixelFormat(), DitheringMethod::NONE,
-                                                 rgbmap, sprite->palette(editor->frame()), false, 0));
+                                                 rgbmap, sprite->palette(editor->frame()), false, 0,
+                                                 color_utils::grayscale_method()));
       }
 
       editor->pasteImage(image.get());

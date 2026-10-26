@@ -216,7 +216,8 @@ void NewFileCommand::onExecute(Context* context)
             {
               srcImage.reset(render::convert_pixel_format(clipImage.get(), nullptr, sprite->pixelFormat(),
                                                           DitheringMethod::NONE, sprite->rgbMap(frame_t(0)),
-                                                          clipPalette.get(), layerImage->isBackground(), 0));
+                                                          clipPalette.get(), layerImage->isBackground(), 0,
+                                                          color_utils::grayscale_method()));
             }
 
             doc::copy_image(dstImage, srcImage.get());

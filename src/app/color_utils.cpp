@@ -12,6 +12,7 @@
 #include "app/color.h"
 #include "app/color_utils.h"
 #include "app/modules/palettes.h"
+#include "app/pref/preferences.h"
 #include "gfx/hsv.h"
 #include "gfx/rgb.h"
 #include "doc/image.h"
@@ -21,6 +22,13 @@
 
 namespace app
 {
+
+render::GrayscaleMethod color_utils::grayscale_method()
+{
+  return Preferences::instance().general.grayscaleMethod() == gen::GrayscaleMethod::HSV_VALUE
+           ? render::GrayscaleMethod::HSV_VALUE
+           : render::GrayscaleMethod::LUMA_709;
+}
 
 gfx::Color color_utils::blackandwhite(gfx::Color color)
 {

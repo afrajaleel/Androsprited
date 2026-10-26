@@ -67,6 +67,13 @@
             </combobox>
           </hbox>
           <check text="Show full file name path" id="show_full_path" tooltip="Uncheck this option if you would prefer to hide&#10;full path on UI (e.g. useful for live streaming)" />
+          <hbox>
+            <label text="Grayscale conversion:" />
+            <combobox id="grayscale_method" tooltip="How colors are converted to gray when changing the color mode,&#10;pasting into a grayscale sprite or picking a color in one.">
+              <listitem text="Luminance (Rec. 709)" value="0" />
+              <listitem text="Value (HSV)" value="1" />
+            </combobox>
+          </hbox>
           <separator horizontal="true" />
           <link id="locate_file" text="Locate Configuration File" />
           <link id="locate_crash_folder" text="Locate Crash Folder" />

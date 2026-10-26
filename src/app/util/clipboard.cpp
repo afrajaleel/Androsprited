@@ -10,6 +10,7 @@
 #endif
 
 #include "app/app.h"
+#include "app/color_utils.h"
 #include "app/cmd/clear_mask.h"
 #include "app/cmd/deselect_mask.h"
 #include "app/cmd/trim_cel.h"
@@ -331,7 +332,7 @@ void paste()
 
       src_image.reset(render::convert_pixel_format(clipboard_image.get(), nullptr, dstSpr->pixelFormat(),
                                                    DitheringMethod::NONE, dst_rgbmap, clipboard_palette.get(), false,
-                                                   0));
+                                                   0, color_utils::grayscale_method()));
     }
 
     // Change to MovingPixelsState

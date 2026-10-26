@@ -561,10 +561,10 @@ int Color::getGray() const
     return 0;
 
   case Color::RgbType:
-    return rgb_luma(m_value.rgb.r, m_value.rgb.g, m_value.rgb.b);
+    return render::rgb_to_gray(m_value.rgb.r, m_value.rgb.g, m_value.rgb.b, color_utils::grayscale_method());
 
   case Color::HsvType:
-    return rgb_luma(getRed(), getGreen(), getBlue());
+    return render::rgb_to_gray(getRed(), getGreen(), getBlue(), color_utils::grayscale_method());
 
   case Color::GrayType:
     return m_value.gray.g;
@@ -575,7 +575,7 @@ int Color::getGray() const
     if (i >= 0 && i < get_current_palette()->size())
     {
       uint32_t c = get_current_palette()->getEntry(i);
-      return rgba_luma(c);
+      return render::rgb_to_gray(rgba_getr(c), rgba_getg(c), rgba_getb(c), color_utils::grayscale_method());
     }
     else
       return 0;

@@ -12,6 +12,7 @@
 #include "gfx/color.h"
 #include "doc/color.h"
 #include "doc/pixel_format.h"
+#include "render/quantization.h"
 
 namespace doc
 {
@@ -25,6 +26,9 @@ namespace color_utils
 
 gfx::Color blackandwhite(gfx::Color color);
 gfx::Color blackandwhite_neg(gfx::Color color);
+
+// Grayscale conversion method chosen in the preferences.
+render::GrayscaleMethod grayscale_method();
 
 gfx::Color color_for_ui(const app::Color& color);
 doc::color_t color_for_image(const app::Color& color, doc::PixelFormat format);

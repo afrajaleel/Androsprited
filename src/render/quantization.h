@@ -27,6 +27,16 @@ namespace render
 {
 using namespace doc;
 
+// How RGB colors are reduced to a gray level.
+enum class GrayscaleMethod
+{
+  LUMA_709,  // Rec. 709 weighting
+  HSV_VALUE, // V of HSV, i.e. max(r, g, b)
+};
+
+// Gray level (0-255) of an RGB color for the given method.
+int rgb_to_gray(int r, int g, int b, GrayscaleMethod method);
+
 class PaletteOptimizerDelegate
 {
 public:
@@ -54,10 +64,12 @@ std::shared_ptr<Palette> create_palette_from_sprite(const Sprite* sprite, frame_
                                                     PaletteOptimizerDelegate* delegate);
 
 // Changes the image pixel format. The dithering method is used only
-// when you want to convert from RGB to Indexed.
+// when you want to convert from RGB to Indexed, and the grayscale
+// method only when converting to Grayscale.
 Image* convert_pixel_format(const Image* src,
                             Image* dst, // Can be NULL to create a new image
                             PixelFormat pixelFormat, DitheringMethod ditheringMethod, const RgbMap* rgbmap,
-                            const Palette* palette, bool is_background, color_t new_mask_color);
+                            const Palette* palette, bool is_background, color_t new_mask_color,
+                            GrayscaleMethod grayscaleMethod = GrayscaleMethod::LUMA_709);
 
 } // namespace render

@@ -82,9 +82,16 @@ std::shared_ptr<Palette> create_palette_from_sprite(const Sprite* sprite, frame_
   return palette;
 }
 
+int rgb_to_gray(const int r, const int g, const int b, const GrayscaleMethod method)
+{
+  if (method == GrayscaleMethod::HSV_VALUE)
+    return std::max({r, g, b});
+  return rgb_luma(r, g, b);
+}
+
 Image* convert_pixel_format(const Image* image, Image* new_image, PixelFormat pixelFormat,
                             DitheringMethod ditheringMethod, const RgbMap* rgbmap, const Palette* palette,
-                            bool is_background, color_t new_mask_color)
+                            bool is_background, color_t new_mask_color, GrayscaleMethod grayscaleMethod)
 {
   if (!new_image)
     new_image = Image::create(pixelFormat, image->width(), image->height());
@@ -132,7 +139,7 @@ Image* convert_pixel_format(const Image* image, Image* new_image, PixelFormat pi
         ASSERT(dst_it != dst_end);
         c = *src_it;
 
-        *dst_it = graya(rgba_luma(c), rgba_geta(c));
+        *dst_it = graya(rgb_to_gray(rgba_getr(c), rgba_getg(c), rgba_getb(c), grayscaleMethod), rgba_geta(c));
       }
       ASSERT(dst_it == dst_end);
       break;
@@ -282,7 +289,7 @@ Image* convert_pixel_format(const Image* image, Image* new_image, PixelFormat pi
         else
         {
           c = palette->getEntry(c);
-          *dst_it = graya(rgba_luma(c), rgba_geta(c));
+          *dst_it = graya(rgb_to_gray(rgba_getr(c), rgba_getg(c), rgba_getb(c), grayscaleMethod), rgba_geta(c));
         }
       }
       ASSERT(dst_it == dst_end);

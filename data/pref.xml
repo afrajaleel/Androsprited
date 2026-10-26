@@ -86,6 +86,10 @@
       <value id="ROTATIONAL_180" value="16" />
       <value id="ROTATIONAL_90" value="32" />
     </enum>
+    <enum id="GrayscaleMethod">
+      <value id="LUMA_709" value="0" />
+      <value id="HSV_VALUE" value="1" />
+    </enum>
     <enum id="StrokePosition">
       <value id="INSIDE" value="0" />
       <value id="OUTSIDE" value="1" />
@@ -107,6 +111,7 @@
       <option id="data_recovery" type="bool" default="true" />
       <option id="data_recovery_period" type="int" default="2" />
       <option id="show_full_path" type="bool" default="true" />
+      <option id="grayscale_method" type="GrayscaleMethod" default="GrayscaleMethod::LUMA_709" />
     </section>
     <section id="undo" text="Undo">
       <option id="size_limit" type="int" default="64" />
