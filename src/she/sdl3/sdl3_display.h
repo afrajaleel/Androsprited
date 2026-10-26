@@ -89,6 +89,11 @@ private:
   // Android when part of the screen is covered (see updateWindowArea()).
   int m_offsetX = 0;
   int m_offsetY = 0;
+#ifdef ANDROID
+  // EGL surface last presented to (see present()).
+  void* m_eglSurface = nullptr;
+  bool rebindAfterSurfaceChange();
+#endif
 };
 
 extern SDL3Display* unique_display;

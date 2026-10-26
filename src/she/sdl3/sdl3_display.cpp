@@ -249,10 +249,42 @@ Surface* SDL3Display::getSurface()
   return m_surface;
 }
 
+#ifdef ANDROID
+// Android can replace the window's EGL surface while this thread isn't
+// pumping events (busy at startup, or waiting for the file picker). SDL then
+// drops the paired pause/resume and never moves the GL context to the new
+// surface, so nothing shows until the app is backgrounded again. Detect the
+// new surface, unbind the context so the renderer binds it again, and
+// re-upload the screen. Returns false while there is no surface.
+bool SDL3Display::rebindAfterSurfaceChange()
+{
+  if (!(SDL_GetWindowFlags(m_window) & SDL_WINDOW_OPENGL))
+    return true;
+  void* surface =
+      SDL_GetPointerProperty(SDL_GetWindowProperties(m_window), SDL_PROP_WINDOW_ANDROID_SURFACE_POINTER, nullptr);
+  if (!surface)
+    return false;
+  if (surface != m_eglSurface)
+  {
+    if (m_eglSurface)
+    {
+      SDL_GL_MakeCurrent(m_window, nullptr);
+      SDL3Surface::textureGen++;
+    }
+    m_eglSurface = surface;
+  }
+  return true;
+}
+#endif
+
 void SDL3Display::present()
 {
   if (!m_dirty || !she::instance()->isGfxThread() || !m_surface)
     return;
+#ifdef ANDROID
+  if (!rebindAfterSurfaceChange())
+    return; // keep m_dirty; draw once the surface is back
+#endif
   m_dirty = false;
 
   if (m_renderer)

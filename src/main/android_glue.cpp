@@ -17,6 +17,7 @@
 
 #ifdef __ANDROID__
 #include <SDL3/SDL.h>
+#include <chrono>
 #include <condition_variable>
 #include <jni.h>
 #include <mutex>
@@ -138,7 +139,16 @@ static std::vector<std::string> pick_and_wait(const char* method)
   }
   call_activity(method, nullptr);
   std::unique_lock<std::mutex> lock(g_pickMutex);
-  g_pickDone.wait(lock, [] { return !g_picking; });
+  while (g_picking)
+  {
+    // The picker pauses the app. Keep pumping so SDL handles the pause and
+    // resume (it moves the GL context to the new surface); otherwise the
+    // editor stays blank when the picker closes.
+    lock.unlock();
+    SDL_PumpEvents();
+    lock.lock();
+    g_pickDone.wait_for(lock, std::chrono::milliseconds(20), [] { return !g_picking; });
+  }
   return g_picked;
 }
 #endif
