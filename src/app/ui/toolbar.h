@@ -60,6 +60,7 @@ private:
   int getToolGroupIndex(tools::ToolGroup* group);
   void openPopupWindow(int group_index, tools::ToolGroup* group);
   gfx::Rect getToolGroupBounds(int group_index);
+  bool isOnLeftSide() const;
   gfx::Point getToolPositionInGroup(int group_index, tools::Tool* tool);
   void openTipWindow(int group_index, tools::Tool* tool);
   void onClosePopup();

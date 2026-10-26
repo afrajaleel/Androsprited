@@ -434,7 +434,12 @@ void ToolBar::openPopupWindow(int group_index, ToolGroup* tool_group)
       w += bounds().w - border().width() - 1;
   }
 
-  rc.x -= w;
+  // Open the strip on the side of the toolbar that has room (the toolbar
+  // can be on the left, the default on Android).
+  if (isOnLeftSide())
+    rc.x += rc.w;
+  else
+    rc.x -= w;
   rc.w = w;
 
   // Set hotregion of popup window
@@ -450,6 +455,11 @@ void ToolBar::openPopupWindow(int group_index, ToolGroup* tool_group)
   m_popupWindow->openWindow();
 
   toolstrip->setBounds(rc);
+}
+
+bool ToolBar::isOnLeftSide() const
+{
+  return bounds().center().x < ui::display_w() / 2;
 }
 
 Rect ToolBar::getToolGroupBounds(int group_index)
@@ -541,9 +551,9 @@ void ToolBar::openTipWindow(int group_index, Tool* tool)
   Rect toolrc = getToolGroupBounds(group_index);
   Point arrow = (tool ? getToolPositionInGroup(group_index, tool) : Point(0, 0));
   if (tool && m_popupWindow && m_popupWindow->isVisible())
-    toolrc.x += arrow.x - m_popupWindow->bounds().w;
+    toolrc.x = m_popupWindow->bounds().x + arrow.x;
 
-  m_tipWindow->pointAt(TOP | RIGHT, toolrc);
+  m_tipWindow->pointAt(isOnLeftSide() ? (TOP | LEFT) : (TOP | RIGHT), toolrc);
 
   if (m_tipOpened)
     m_tipWindow->openWindow();
