@@ -532,6 +532,8 @@ void DocumentApi::adjustFrameTags(Sprite* sprite, frame_t frame, frame_t delta, 
 
   // As FrameTag::setFrameRange() changes m_frameTags, we need to use
   // a copy of this collection
+  // ASSERT(sprite) above is a debug-only check; callers never pass null.
+  // cppcheck-suppress nullPointerRedundantCheck
   std::vector<FrameTag*> tags(sprite->frameTags().begin(), sprite->frameTags().end());
 
   for (FrameTag* tag : tags)

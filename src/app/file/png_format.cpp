@@ -427,9 +427,7 @@ bool PngFormat::onSave(FileOp* fop)
     // MID() above clamps to PNG_MAX_PALETTE_LENGTH assuming it's 256 (the
     // indexed-palette size Besprited works with everywhere else); this only
     // fails to build if libpng is ever linked with a non-standard value.
-#if PNG_MAX_PALETTE_LENGTH != 256
-#error PNG_MAX_PALETTE_LENGTH should be 256
-#endif
+    static_assert(PNG_MAX_PALETTE_LENGTH == 256, "PNG_MAX_PALETTE_LENGTH should be 256");
 
     // Save the color palette.
     palette = (png_colorp)png_malloc(png_ptr, pal_size * sizeof(png_color));
