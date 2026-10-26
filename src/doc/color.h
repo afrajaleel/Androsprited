@@ -57,7 +57,7 @@ inline uint32_t rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 
 inline int rgb_luma(int r, int g, int b)
 {
-  return (r * 2126 + g * 7152 + b * 722) / 10000;
+  return (r * 2126 + g * 7152 + b * 722 + 5000) / 10000;
 }
 
 inline uint8_t rgba_luma(uint32_t c)

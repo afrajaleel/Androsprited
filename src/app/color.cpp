@@ -561,10 +561,10 @@ int Color::getGray() const
     return 0;
 
   case Color::RgbType:
-    return int(255.0 * Hsv(Rgb(m_value.rgb.r, m_value.rgb.g, m_value.rgb.b)).value());
+    return rgb_luma(m_value.rgb.r, m_value.rgb.g, m_value.rgb.b);
 
   case Color::HsvType:
-    return int(255.0 * m_value.hsv.v / 100.0);
+    return rgb_luma(getRed(), getGreen(), getBlue());
 
   case Color::GrayType:
     return m_value.gray.g;
@@ -575,7 +575,7 @@ int Color::getGray() const
     if (i >= 0 && i < get_current_palette()->size())
     {
       uint32_t c = get_current_palette()->getEntry(i);
-      return int(255.0 * Hsv(Rgb(rgba_getr(c), rgba_getg(c), rgba_getb(c))).value());
+      return rgba_luma(c);
     }
     else
       return 0;
