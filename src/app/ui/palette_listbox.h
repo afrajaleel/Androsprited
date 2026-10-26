@@ -34,11 +34,14 @@ public:
   doc::Palette* selectedPalette();
   std::string selectedPaletteName();
   base::Signal1<void, doc::Palette*> PalChange;
+  // A palette was tapped/clicked (on release, so dragging doesn't fire it).
+  base::Signal1<void, doc::Palette*> PalTap;
   void addPalette(std::shared_ptr<doc::Palette> palette, const std::string& name);
 
 protected:
   void setLoading(bool isLoading);
   virtual void onChange();
+  bool onProcessMessage(ui::Message* msg) override;
 
 private:
   class LoadingItem;

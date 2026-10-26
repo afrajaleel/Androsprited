@@ -62,6 +62,7 @@
 #include "ui/separator.h"
 #include "ui/system.h"
 
+#include <algorithm>
 #include <cstring>
 
 namespace app
@@ -434,6 +435,26 @@ void ColorBar::onAfterExecuteCommand(CommandExecutionEvent& ev)
 }
 
 // Switches the palette-editor
+// Places a popup of the given size next to `anchor`, keeping it on the
+// screen: below it, else above, else beside it (e.g. the color bar's tall
+// buttons in the phone layout).
+static gfx::Rect place_popup(const gfx::Rect& anchor, gfx::Size size)
+{
+  const int sw = ui::display_w();
+  const int sh = ui::display_h();
+  size.w = std::min(size.w, sw);
+  size.h = std::min(size.h, sh);
+
+  if (anchor.y2() + size.h <= sh)
+    return gfx::Rect(std::clamp(anchor.x, 0, sw - size.w), anchor.y2(), size.w, size.h);
+  if (anchor.y - size.h >= 0)
+    return gfx::Rect(std::clamp(anchor.x, 0, sw - size.w), anchor.y - size.h, size.w, size.h);
+
+  const int x = anchor.x2() + size.w <= sw ? anchor.x2() : std::max(0, anchor.x - size.w);
+  const int y = std::clamp(anchor.y + anchor.h / 2 - size.h / 2, 0, sh - size.h);
+  return gfx::Rect(x, y, size.w, size.h);
+}
+
 void ColorBar::onPaletteButtonClick()
 {
   int item = m_buttons.selectedItem();
@@ -516,8 +537,10 @@ void ColorBar::onPaletteButtonClick()
     if (!m_palettePopup->isVisible())
     {
       gfx::Rect bounds = m_buttons.getItem(item)->bounds();
+      const int sw = ui::display_w();
+      const gfx::Size size(std::max(sw / 2, std::min(sw, 160 * ui::guiscale())), ui::display_h() / 2);
 
-      m_palettePopup->showPopup(gfx::Rect(bounds.x, bounds.y + bounds.h, ui::display_w() / 2, ui::display_h() / 2));
+      m_palettePopup->showPopup(place_popup(bounds, size));
     }
     else
     {

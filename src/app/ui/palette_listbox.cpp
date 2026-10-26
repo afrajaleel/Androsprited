@@ -169,6 +169,18 @@ void PaletteListBox::onChange()
     PalChange(palette);
 }
 
+bool PaletteListBox::onProcessMessage(ui::Message* msg)
+{
+  const bool released = (msg->type() == ui::kMouseUpMessage && hasCapture());
+  const bool result = ListBox::onProcessMessage(msg);
+  if (released)
+  {
+    if (auto palette = selectedPalette())
+      PalTap(palette);
+  }
+  return result;
+}
+
 void PaletteListBox::setLoading(bool isLoading)
 {
   if (isLoading)

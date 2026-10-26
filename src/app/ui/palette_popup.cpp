@@ -45,6 +45,10 @@ PalettePopup::PalettePopup()
 
   m_paletteListBox.DoubleClickItem.connect(base::Bind<void>(&PalettePopup::onLoadPal, this));
   m_paletteListBox.PalChange.connect(&PalettePopup::onPalChange, this);
+#ifdef ANDROID
+  // On a touchscreen one tap applies the palette (undoable).
+  m_paletteListBox.PalTap.connect([this](doc::Palette*) { onLoadPal(); });
+#endif
 }
 
 void PalettePopup::showPopup(const gfx::Rect& bounds)
