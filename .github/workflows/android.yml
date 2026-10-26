@@ -1,12 +1,12 @@
 name: Android
 
 # Builds the Android app (android/README.md) and uploads the APK as a
-# workflow artifact. Runs on pushes to trunk/android branches, on pull
+# workflow artifact. Runs on pushes to trunk, android and android-* branches, on pull
 # requests, and by hand from the Actions tab ("Run workflow").
 
 on:
   push:
-    branches: [ trunk, android, 'android/**' ]
+    branches: [ trunk, android, 'android-*' ]
   pull_request:
     branches: [ trunk ]
   workflow_dispatch:

@@ -42,6 +42,24 @@ Actions): `ANDROID_KEYSTORE_B64` (contents of the `.b64` file),
 `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`besprited`) and
 `ANDROID_KEY_PASSWORD`. Keep the keystore file safe; never commit it.
 
+## Home screen
+
+Besprited opens on a home screen (Kotlin, Jetpack Compose, Material 3):
+
+- **Your sprites:** everything in the sprites folder plus the editor's
+  recent files, with real thumbnails (including `.aseprite` files), newest
+  first. Filter by Aseprite / Animated / Images. Tap to open in the editor;
+  long-press or ⋮ to share, rename or delete.
+- **Continue:** jumps back into the last sprite you worked on.
+- **New sprite:** size presets or custom size, RGBA / grayscale / indexed,
+  transparent / white / black background and a palette from the bundled
+  ones. Creates an `.aseprite` file in the sprites folder and opens it.
+- **Open file:** Android's picker (Gallery, Downloads, Drive, ...).
+- **Settings:** fullscreen editor, skip the home screen at launch, file
+  access, sprites folder.
+
+Closing the editor (File > Exit) returns to the home screen.
+
 ## Using it on a phone
 
 The app follows the phone's rotation (unless rotation is locked) and runs
@@ -132,10 +150,15 @@ catches most build errors without an NDK.
   freetype, giflib, tinyxml2 and pixman, then Besprited with
   `-DANDROID=ON`. curl and libarchive aren't used on Android (no network
   features; the extension format they serve is disabled anyway).
-- `app/src/main/java/.../BespritedActivity.java` extends SDL's activity: it
-  unpacks Besprited's `data/` folder from the APK, sets the folders the
-  native code uses (environment variables, see `src/main/android_glue.cpp`),
-  handles "Open with", sharing and the storage permission.
+- `app/src/main/java/.../BespritedActivity.kt` (the editor) extends SDL's
+  activity: it unpacks Besprited's `data/` folder from the APK, sets the
+  folders the native code uses (environment variables, see
+  `src/main/android_glue.cpp`), handles "Open with", sharing and the storage
+  permission. It runs in its own `:editor` process because the native code
+  can only start once per process.
+- `app/src/main/java/.../home/` is the Compose home screen. `AseFile.kt`
+  reads `.aseprite` thumbnails and writes new sprites, so creating one
+  needs no native code.
 - In the C++ code, Android-specific parts are under `#ifdef ANDROID`:
   - `src/she/sdl3/sdl3_touch.cpp` turns fingers into mouse events and
     pan/zoom/undo gestures,
