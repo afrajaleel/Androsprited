@@ -44,7 +44,10 @@ Actions): `ANDROID_KEYSTORE_B64` (contents of the `.b64` file),
 
 ## Using it on a phone
 
-The app runs in landscape and uses the whole screen.
+The app uses the whole screen and follows the phone's rotation (unless
+rotation is locked). In landscape the panels sit beside the canvas; in
+portrait the palette, color picker and touch buttons move to rows below the
+canvas, and the timeline (when shown) goes under the canvas.
 
 | Touch                      | Does                                              |
 |----------------------------|---------------------------------------------------|

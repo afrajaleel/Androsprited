@@ -195,8 +195,13 @@ ColorBar::ColorBar(int align)
   fgBox->addChild(m_fgWarningIcon);
   bgBox->addChild(&m_bgColor);
   bgBox->addChild(m_bgWarningIcon);
-  addChild(fgBox);
-  addChild(bgBox);
+  // Foreground/background colors stacked; in a column of their own when the
+  // bar is horizontal (see setHorizontal()).
+  m_fgBgBox = new VBox;
+  m_fgBgBox->noBorderNoChildSpacing();
+  m_fgBgBox->addChild(fgBox);
+  m_fgBgBox->addChild(bgBox);
+  addChild(m_fgBgBox);
 
   m_fgColor.setExpansive(true);
   m_bgColor.setExpansive(true);
@@ -1081,6 +1086,21 @@ void ColorBar::fixColorIndex(ColorButton& colorButton)
       color = Color::fromIndex(newIndex);
       colorButton.setColor(color);
     }
+  }
+}
+
+void ColorBar::setHorizontal(bool horizontal)
+{
+  setAlign(horizontal ? HORIZONTAL : VERTICAL);
+  m_splitter.setAlign(horizontal ? HORIZONTAL : VERTICAL);
+  m_splitter.setPosition(horizontal ? 55 : 80);
+  // Below the canvas: tall enough for a few palette rows and the selector,
+  // and a fixed-width column for the fg/bg colors.
+  setMinSize(gfx::Size(0, horizontal ? 80 * ui::guiscale() : 0));
+  if (m_fgBgBox)
+  {
+    m_fgBgBox->setMinSize(gfx::Size(horizontal ? 56 * ui::guiscale() : 0, 0));
+    m_fgBgBox->setExpansive(false);
   }
 }
 

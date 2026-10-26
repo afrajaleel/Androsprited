@@ -1043,8 +1043,9 @@ int main(const int argc, char* argv[])
   // Deliver the back button/gesture as a key (handled as Esc) instead of
   // letting it close the app.
   SDL_SetHint(SDL_HINT_ANDROID_TRAP_BACK_BUTTON, "1");
-  // The desktop-style UI needs a landscape screen on a phone.
-  SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+  // Follow the phone's rotation (respecting its rotation lock); the main
+  // window rearranges itself for portrait (MainWindow::applyOrientation).
+  SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight Portrait");
 #endif
 
 #if defined(__linux__) && !defined(__ANDROID__)

@@ -39,6 +39,7 @@
 #include "app/ui_context.h"
 #include "base/path.h"
 #include "ui/message.h"
+#include "ui/resize_event.h"
 #include "ui/splitter.h"
 #include "ui/system.h"
 #include "ui/view.h"
@@ -322,6 +323,59 @@ bool MainWindow::onProcessMessage(ui::Message* msg)
   return Window::onProcessMessage(msg);
 }
 
+void MainWindow::onResize(ui::ResizeEvent& ev)
+{
+#ifdef ANDROID
+  // Phones: rearrange the panels when the screen rotates.
+  const gfx::Rect& rc = ev.bounds();
+  if (rc.w > 0 && rc.h > 0)
+    applyOrientation(rc.h > rc.w);
+#endif
+  Window::onResize(ev);
+}
+
+// In portrait orientation the screen is too narrow for panels beside the
+// canvas, so the color bar and touch bar go below it (in rows) and the
+// timeline goes under the canvas. Landscape restores the usual layout.
+void MainWindow::applyOrientation(bool portrait)
+{
+  if (portrait == m_portrait)
+    return;
+  m_portrait = portrait;
+
+  // Color bar
+  m_colorBar->parent()->removeChild(m_colorBar);
+  m_colorBar->setHorizontal(portrait);
+  if (portrait)
+  {
+    colorBarBottomPlaceholder()->addChild(m_colorBar);
+    colorBarSplitter()->setPosition(0);
+  }
+  else
+  {
+    colorBarPlaceholder()->addChild(m_colorBar);
+    colorBarSplitter()->setPosition(m_colorBar->sizeHint().w);
+  }
+
+  // Touch bar
+  m_touchBar->parent()->removeChild(m_touchBar.get());
+  m_touchBar->setAlign(portrait ? HORIZONTAL : VERTICAL);
+  if (portrait)
+    touchBarBottomPlaceholder()->addChild(m_touchBar.get());
+  else if (Preferences::instance().touchBar.alternatePosition())
+    touchBarAltPlaceholder()->addChild(m_touchBar.get());
+  else
+    touchBarPlaceholder()->addChild(m_touchBar.get());
+
+  // Timeline under the canvas in portrait; beside it (if so configured) in
+  // landscape.
+  bool besideCanvas = !portrait && Preferences::instance().general.verticalTimeline();
+  timelineSplitter()->setAlign(besideCanvas ? HORIZONTAL : VERTICAL);
+  timelineSplitter()->setPosition(portrait ? 70 : 75);
+
+  configureWorkspaceLayout();
+}
+
 void MainWindow::onSaveLayout(SaveLayoutEvent& ev)
 {
   Window::onSaveLayout(ev);
@@ -452,7 +506,8 @@ void MainWindow::configureWorkspaceLayout()
 
   m_menuBar->setVisible(normal);
   m_tabsBar->setVisible(normal);
-  colorBarPlaceholder()->setVisible(normal && isDoc);
+  colorBarPlaceholder()->setVisible(normal && isDoc && !m_portrait);
+  colorBarBottomPlaceholder()->setVisible(normal && isDoc && m_portrait);
   m_touchBar->setVisible(normal && isDoc && Preferences::instance().touchBar.visible());
   m_toolBar->setVisible(normal && isDoc);
   m_statusBar->setVisible(normal);

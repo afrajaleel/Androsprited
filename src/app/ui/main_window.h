@@ -97,6 +97,7 @@ public:
 
 protected:
   bool onProcessMessage(ui::Message* msg) override;
+  void onResize(ui::ResizeEvent& ev) override;
   void onSaveLayout(ui::SaveLayoutEvent& ev) override;
   void onActiveViewChange();
 
@@ -104,6 +105,7 @@ private:
   DocumentView* getDocView();
   HomeView* getHomeView();
   void configureWorkspaceLayout();
+  void applyOrientation(bool portrait);
 
   MainMenuBar* m_menuBar;
   ContextBar* m_contextBar;
@@ -119,6 +121,7 @@ private:
   HomeView* m_homeView;
   DevConsoleView* m_devConsoleView;
   Notifications* m_notifications;
+  bool m_portrait = false;
 };
 
 } // namespace app

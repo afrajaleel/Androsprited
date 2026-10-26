@@ -48,6 +48,10 @@ class ColorBar : public ui::Box,
   static ColorBar* m_instance;
 
 public:
+  // Lays out the palette and color selector side by side (used below the
+  // canvas in portrait orientation) instead of stacked.
+  void setHorizontal(bool horizontal);
+
   enum class ColorSelector
   {
     NONE,
@@ -174,6 +178,7 @@ private:
   base::ScopedConnection m_bgConn;
   base::ScopedConnection m_appPalChangeConn;
   ui::MouseButtons m_lastButtons;
+  ui::Box* m_fgBgBox = nullptr;
 };
 
 } // namespace app
