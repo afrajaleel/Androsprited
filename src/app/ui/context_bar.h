@@ -116,6 +116,7 @@ private:
   class BrushPatternField;
   class EyedropperField;
   class DropPixelsField;
+  class ClipboardField;
   class AutoSelectLayerField;
   class SymmetryField;
   class SymmetryOptionsField;

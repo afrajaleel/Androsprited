@@ -1296,6 +1296,47 @@ protected:
   }
 };
 
+#ifdef ANDROID
+// Cut/Copy/Paste beside the selection options: on a touchscreen there are
+// no keyboard shortcuts and no right-click.
+class ContextBar::ClipboardField : public ButtonSet
+{
+public:
+  ClipboardField()
+    : ButtonSet(3)
+  {
+    addItem("Cut");
+    addItem("Copy");
+    addItem("Paste");
+    setOfferCapture(false);
+  }
+
+protected:
+  void onItemChange(Item* item) override
+  {
+    ButtonSet::onItemChange(item);
+
+    const char* id = nullptr;
+    switch (selectedItem())
+    {
+    case 0:
+      id = CommandId::Cut;
+      break;
+    case 1:
+      id = CommandId::Copy;
+      break;
+    case 2:
+      id = CommandId::Paste;
+      break;
+    }
+    // These are actions, not modes: don't leave the button pressed.
+    deselectItems();
+    if (id)
+      UIContext::instance()->executeCommand(CommandsModule::instance()->getCommandByName(id));
+  }
+};
+#endif
+
 class ContextBar::EyedropperField : public HBox
 {
 public:
@@ -1579,6 +1620,9 @@ ContextBar::ContextBar()
   addChild(m_selectionOptionsBox = new HBox());
   m_selectionOptionsBox->addChild(m_dropPixels = new DropPixelsField());
   m_selectionOptionsBox->addChild(m_selectionMode = new SelectionModeField);
+#ifdef ANDROID
+  m_selectionOptionsBox->addChild(new ClipboardField);
+#endif
   m_selectionOptionsBox->addChild(m_transparentColor = new TransparentColorField(this));
   m_selectionOptionsBox->addChild(m_pivot = new PivotField);
   m_selectionOptionsBox->addChild(m_rotAlgo = new RotAlgorithmField());
